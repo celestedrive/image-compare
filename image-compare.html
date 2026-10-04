@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.6">
+<meta name="app-version" content="2026.10.05.8">
 <title>画像比較</title>
 
 <style>
@@ -34,9 +34,10 @@ html,body{
 button,input{font:inherit}
 button{color:inherit}
 #app{
-  position:fixed;inset:0;
-  width:100vw;height:100dvh;
-  display:flex;flex-direction:column;
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
   background:#000;
   overflow:hidden;
 }
@@ -88,25 +89,33 @@ button{color:inherit}
 /* 下部操作部も通常レイアウト。余白を作らず画像に重ならない */
 #bottomPanel{
   flex:0 0 auto;
+  height:auto;
+  min-height:0;
+  max-height:none;
   background:rgba(15,15,17,.99);
   border-top:1px solid var(--line);
   padding:
-    3px
+    2px
     calc(4px + var(--safe-r))
-    max(2px,var(--safe-b))
+    calc(2px + var(--safe-b))
     calc(4px + var(--safe-l));
 }
 #status{
-  min-height:16px;
-  padding:0 2px 2px;
-  display:flex;align-items:center;
+  height:13px;
+  min-height:13px;
+  padding:0 2px;
+  display:flex;
+  align-items:center;
   color:var(--muted);
-  font-size:10px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:9px;
+  line-height:13px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 #buttonRow{
   display:grid;
-  grid-template-columns:1.35fr 1fr 1fr 1fr 42px;
+  grid-template-columns:1.2fr 1fr 1fr .9fr .9fr 40px;
   gap:4px;
 }
 button,.btn{
@@ -123,30 +132,37 @@ button:disabled{opacity:.36}
 input[type=file]{display:none}
 
 #modeRow{
-  height:36px;
-  margin-top:4px;
-  display:flex;gap:4px;align-items:center;
+  height:32px;
+  margin-top:3px;
+  display:flex;
+  gap:4px;
+  align-items:center;
 }
 #modeSwitch{
   display:grid;
   grid-template-columns:1fr 1fr;
-  width:122px;height:34px;
-  padding:3px;
+  width:118px;
+  height:32px;
+  padding:2px;
   background:#222226;
   border-radius:9px;
 }
 #modeSwitch button{
-  height:28px;padding:0 7px;
+  height:28px;
+  padding:0 7px;
   background:transparent;
   border-radius:7px;
   font-size:12px;
 }
 #modeSwitch button.active{background:#505057}
 #modeInfo{
-  flex:1;min-width:0;
-  height:34px;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 10px;
+  flex:1;
+  min-width:0;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 9px;
   border-radius:9px;
   background:#222226;
   color:var(--muted);
@@ -156,15 +172,22 @@ input[type=file]{display:none}
 /* 指の移動量を減らすため、比較バーは短めに中央配置 */
 #sliderDock{
   width:100%;
-  height:46px;
-  display:flex;align-items:center;justify-content:center;
+  height:39px;
+  flex:0 0 39px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   background:transparent;
+  padding:0;
+  margin:0;
 }
 #compareRange{
-  appearance:none;-webkit-appearance:none;
-  width:min(64vw,340px);
-  height:42px;
+  appearance:none;
+  -webkit-appearance:none;
+  width:min(62vw,320px);
+  height:36px;
   margin:0;
+  padding:0;
   background:transparent;
   touch-action:pan-x;
 }
@@ -185,6 +208,96 @@ input[type=file]{display:none}
 }
 #compareRange::-moz-range-thumb{
   width:34px;height:34px;border:0;border-radius:50%;background:#fff;
+}
+
+
+/* 手動位置合わせ：必要な時だけ開く */
+#manualPanel{
+  display:none;
+  margin-top:4px;
+  padding:5px;
+  border-radius:9px;
+  background:#1c1c20;
+  border:1px solid rgba(255,255,255,.08);
+}
+#manualPanel.open{display:block}
+#manualGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px 8px;
+}
+.manualControl{
+  display:grid;
+  grid-template-columns:30px 1fr 42px;
+  gap:4px;
+  align-items:center;
+  min-width:0;
+}
+.manualControl label{
+  font-size:11px;
+  color:var(--muted);
+  text-align:center;
+}
+.manualControl output{
+  font-size:10px;
+  color:#fff;
+  text-align:right;
+  white-space:nowrap;
+}
+.manualControl input[type=range]{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  height:28px;
+  margin:0;
+  background:transparent;
+}
+.manualControl input[type=range]::-webkit-slider-runnable-track{
+  height:5px;
+  border-radius:999px;
+  background:#5d5d64;
+}
+.manualControl input[type=range]::-webkit-slider-thumb{
+  appearance:none;
+  -webkit-appearance:none;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  margin-top:-9.5px;
+  background:#fff;
+}
+.manualControl input[type=range]::-moz-range-track{
+  height:5px;
+  border-radius:999px;
+  background:#5d5d64;
+}
+.manualControl input[type=range]::-moz-range-thumb{
+  width:24px;
+  height:24px;
+  border:0;
+  border-radius:50%;
+  background:#fff;
+}
+#manualFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-top:3px;
+}
+#manualHint{
+  flex:1;
+  min-width:0;
+  color:var(--muted);
+  font-size:9px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#manualResetBtn{
+  height:28px;
+  padding:0 9px;
+  font-size:10px;
 }
 
 /* 履歴 */
@@ -268,17 +381,11 @@ input[type=file]{display:none}
   #bottomPanel{background:#101012}
 }
 @media (orientation:landscape) and (max-height:560px){
-  #bottomPanel{padding-top:2px}
+  #status{display:none}
   #buttonRow button,#buttonRow .btn{height:32px}
-  #modeRow{height:32px}
-  #sliderDock{height:38px}
-  #compareRange{height:36px;width:min(48vw,320px)}
-}
-  #appbar{padding-bottom:3px}
-  #buttonRow button,#buttonRow .btn{height:36px}
-  #modeRow{height:38px}
-  #sliderDock{height:calc(58px + var(--safe-b))}
-  #compareRange{height:54px}
+  #modeRow{height:30px}
+  #sliderDock{height:34px;flex-basis:34px}
+  #compareRange{height:32px;width:min(46vw,300px)}
 }
 </style>
 </head>
@@ -307,8 +414,38 @@ input[type=file]{display:none}
       </label>
       <button id="swapBtn" disabled>入替</button>
       <button id="alignBtn" disabled>再合致</button>
+      <button id="adjustBtn" disabled>調整</button>
       <button id="historyBtn">履歴 <span id="historyCount"></span></button>
       <button id="resetBtn" disabled aria-label="表示リセット">↺</button>
+    </div>
+
+    <div id="manualPanel">
+      <div id="manualGrid">
+        <div class="manualControl">
+          <label for="manualX">横</label>
+          <input id="manualX" type="range" min="-20" max="20" step="0.1" value="0">
+          <output id="manualXValue">0.0%</output>
+        </div>
+        <div class="manualControl">
+          <label for="manualY">縦</label>
+          <input id="manualY" type="range" min="-20" max="20" step="0.1" value="0">
+          <output id="manualYValue">0.0%</output>
+        </div>
+        <div class="manualControl">
+          <label for="manualRotate">回転</label>
+          <input id="manualRotate" type="range" min="-10" max="10" step="0.1" value="0">
+          <output id="manualRotateValue">0.0°</output>
+        </div>
+        <div class="manualControl">
+          <label for="manualScale">倍率</label>
+          <input id="manualScale" type="range" min="80" max="120" step="0.1" value="100">
+          <output id="manualScaleValue">100.0%</output>
+        </div>
+      </div>
+      <div id="manualFooter">
+        <span id="manualHint">画像2だけを微調整します</span>
+        <button id="manualResetBtn">補正リセット</button>
+      </div>
     </div>
 
     <div id="modeRow">
@@ -349,9 +486,13 @@ const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d');
 const clipLayer=$('clipLayer');
 const dividerLine=$('dividerLine');
 const filesInput=$('files');
-const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),historyBtn=$('historyBtn'),resetBtn=$('resetBtn');
+const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),adjustBtn=$('adjustBtn'),historyBtn=$('historyBtn'),resetBtn=$('resetBtn');
 const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn');
 const compareRange=$('compareRange'),modeLabel=$('modeLabel'),modeValue=$('modeValue');
+const manualPanel=$('manualPanel');
+const manualX=$('manualX'),manualY=$('manualY'),manualRotate=$('manualRotate'),manualScale=$('manualScale');
+const manualXValue=$('manualXValue'),manualYValue=$('manualYValue'),manualRotateValue=$('manualRotateValue'),manualScaleValue=$('manualScaleValue');
+const manualResetBtn=$('manualResetBtn');
 const statusEl=$('status'),hint=$('hint');
 const historyModal=$('historyModal'),historyList=$('historyList'),historyCount=$('historyCount');
 const closeHistoryBtn=$('closeHistoryBtn'),clearHistoryBtn=$('clearHistoryBtn');
@@ -365,6 +506,10 @@ let mode='split';
 let splitPct=50;
 let fadePct=50;
 let zoom=1;
+let manualOffsetX=0;
+let manualOffsetY=0;
+let manualRotation=0;
+let manualScaleFactor=1;
 let aligning=false;
 let openingHistory=false;
 
@@ -373,7 +518,7 @@ function status(t){statusEl.textContent=t}
 
 function controlsReady(){
   const ok=!!(imgA&&imgB);
-  [swapBtn,alignBtn,splitBtn,fadeBtn,compareRange,resetBtn].forEach(x=>x.disabled=!ok);
+  [swapBtn,alignBtn,adjustBtn,splitBtn,fadeBtn,compareRange,resetBtn].forEach(x=>x.disabled=!ok);
   hint.classList.toggle('hidden',!!(imgA||imgB));
 }
 
@@ -416,18 +561,35 @@ function draw(){
     ctxA.drawImage(imgA,r.x,r.y,r.w,r.h);
 
     if(imgB){
+      let source=null;
+      let br=null;
+
       if(alignedCanvas){
-        ctxB.drawImage(alignedCanvas,r.x,r.y,r.w,r.h);
+        source=alignedCanvas;
+        br=r;
       }else{
+        source=imgB;
         const bb=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
-        const rb={
+        br={
           w:bb.w*zoom,
           h:bb.h*zoom,
           x:W/2-(bb.w*zoom)/2,
           y:H/2-(bb.h*zoom)/2
         };
-        ctxB.drawImage(imgB,rb.x,rb.y,rb.w,rb.h);
       }
+
+      const cx=W/2;
+      const cy=H/2;
+      const dx=(manualOffsetX/100)*r.w;
+      const dy=(manualOffsetY/100)*r.h;
+
+      ctxB.save();
+      ctxB.translate(cx+dx,cy+dy);
+      ctxB.rotate(manualRotation*Math.PI/180);
+      ctxB.scale(manualScaleFactor,manualScaleFactor);
+      ctxB.translate(-cx,-cy);
+      ctxB.drawImage(source,br.x,br.y,br.w,br.h);
+      ctxB.restore();
     }
   }else if(imgB){
     const base=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
@@ -534,6 +696,69 @@ stage.addEventListener('dblclick',()=>{
   status('ズームを1倍に戻しました');
 });
 
+
+/* ---------- 手動位置合わせ ---------- */
+function updateManualOutputs(){
+  manualXValue.textContent=manualOffsetX.toFixed(1)+'%';
+  manualYValue.textContent=manualOffsetY.toFixed(1)+'%';
+  manualRotateValue.textContent=manualRotation.toFixed(1)+'°';
+  manualScaleValue.textContent=(manualScaleFactor*100).toFixed(1)+'%';
+}
+
+function syncManualInputs(){
+  manualX.value=String(manualOffsetX);
+  manualY.value=String(manualOffsetY);
+  manualRotate.value=String(manualRotation);
+  manualScale.value=String(manualScaleFactor*100);
+  updateManualOutputs();
+}
+
+function resetManual(redraw=true){
+  manualOffsetX=0;
+  manualOffsetY=0;
+  manualRotation=0;
+  manualScaleFactor=1;
+  syncManualInputs();
+  if(redraw)draw();
+}
+
+adjustBtn.onclick=()=>{
+  const open=!manualPanel.classList.contains('open');
+  manualPanel.classList.toggle('open',open);
+  adjustBtn.classList.toggle('active',open);
+  if(open){
+    syncManualInputs();
+    status('手動調整：横・縦・回転・倍率で画像2を合わせられます');
+  }
+};
+
+manualX.addEventListener('input',()=>{
+  manualOffsetX=Number(manualX.value);
+  updateManualOutputs();
+  draw();
+});
+manualY.addEventListener('input',()=>{
+  manualOffsetY=Number(manualY.value);
+  updateManualOutputs();
+  draw();
+});
+manualRotate.addEventListener('input',()=>{
+  manualRotation=Number(manualRotate.value);
+  updateManualOutputs();
+  draw();
+});
+manualScale.addEventListener('input',()=>{
+  manualScaleFactor=Number(manualScale.value)/100;
+  updateManualOutputs();
+  draw();
+});
+manualResetBtn.onclick=()=>{
+  resetManual(true);
+  status('手動補正をリセットしました');
+};
+
+syncManualInputs();
+
 /* ---------- 画像読み込み ---------- */
 function fileToImage(blob){
   return new Promise((resolve,reject)=>{
@@ -604,6 +829,7 @@ filesInput.addEventListener('change',async e=>{
         metaB=null;
 
         alignedCanvas=null;
+        resetManual(false);
         splitPct=50;
         fadePct=50;
         setMode('split');
@@ -637,6 +863,7 @@ swapBtn.onclick=async()=>{
   [blobA,blobB]=[blobB,blobA];
   [metaA,metaB]=[metaB,metaA];
   alignedCanvas=null;
+  resetManual(false);
   zoom=keepZoom;
   draw();
   await autoAlign(true);
@@ -646,11 +873,12 @@ swapBtn.onclick=async()=>{
 
 resetBtn.onclick=()=>{
   zoom=1;
+  resetManual(false);
   splitPct=50;
   fadePct=50;
   setMode('split');
   draw();
-  status('表示をリセットしました');
+  status('表示と手動補正をリセットしました');
 };
 
 /* ---------- Diffchecker風の高精度位置合わせ ---------- */
@@ -1056,6 +1284,7 @@ async function autoAlign(silent=false){
     }
 
     alignedCanvas=matToCanvas(cv,best.mat);
+    resetManual(false);
     draw();
 
     const label=best.kind==='affine'?'移動・回転・倍率':'パース補正';
@@ -1064,7 +1293,7 @@ async function autoAlign(silent=false){
     console.error(err);
     alignedCanvas=null;
     draw();
-    status('自動合致できませんでした。画像の共通部分が少ない場合は手動調整が必要です');
+    status('自動合致できませんでした。「調整」で手動補正できます');
   }finally{
     for(const x of [
       srcA,srcB,
