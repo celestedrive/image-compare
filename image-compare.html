@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.16">
+<meta name="app-version" content="2026.10.05.17">
 <title>画像比較</title>
 
 <style>
@@ -122,7 +122,7 @@ button{color:inherit}
 }
 #buttonRow{
   display:grid;
-  grid-template-columns:1.2fr 1fr 1fr .9fr .9fr 40px;
+  grid-template-columns:1.15fr .85fr 1fr .85fr .9fr .8fr 40px;
   gap:4px;
 }
 button,.btn{
@@ -382,13 +382,51 @@ input[type=file]{display:none}
 #historyHeader strong{font-size:16px}
 #historyHeader .spacer{flex:1}
 #historyHeader button{height:36px;padding:0 10px;font-size:12px}
-#historyList{
-  max-height:calc(78dvh - 58px);
+#collectionTabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  margin-bottom:5px;
+}
+#collectionTabs button{
+  height:34px;
+  background:#28282d;
+}
+#collectionTabs button.active{
+  background:#fff;
+  color:#000;
+}
+#historyList,#savedList{
+  max-height:calc(78dvh - 97px);
   overflow:auto;-webkit-overflow-scrolling:touch;
 }
 .historyEmpty{
   padding:42px 20px;text-align:center;
   color:var(--muted);font-size:14px;line-height:1.7;
+}
+.savedTag{
+  display:inline-block;
+  max-width:100%;
+  margin-bottom:4px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#34343a;
+  color:#fff;
+  font-size:10px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.savedActions{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.savedActions button{
+  width:52px;
+  height:30px;
+  padding:0;
+  font-size:10px;
 }
 .historyItem{
   display:grid;
@@ -470,6 +508,7 @@ input[type=file]{display:none}
       <button id="swapBtn" disabled>入替</button>
       <button id="alignBtn" disabled>再合致</button>
       <button id="adjustBtn" disabled>調整</button>
+      <button id="saveBtn" disabled>★保存</button>
       <button id="historyBtn">履歴 <span id="historyCount"></span></button>
       <button id="resetBtn" disabled aria-label="表示リセット">↺</button>
     </div>
@@ -530,12 +569,17 @@ input[type=file]{display:none}
   <div id="historyModal" aria-hidden="true">
     <div id="historySheet">
       <div id="historyHeader">
-        <strong>比較履歴</strong>
+        <strong id="collectionTitle">比較履歴</strong>
         <div class="spacer"></div>
         <button id="clearHistoryBtn">全削除</button>
         <button id="closeHistoryBtn">閉じる</button>
       </div>
+      <div id="collectionTabs">
+        <button id="historyTabBtn" class="active">履歴</button>
+        <button id="savedTabBtn">保存済み</button>
+      </div>
       <div id="historyList"></div>
+      <div id="savedList" class="hidden"></div>
     </div>
   </div>
 </div>
@@ -551,7 +595,7 @@ const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d');
 const clipLayer=$('clipLayer');
 const dividerLine=$('dividerLine');
 const filesInput=$('files');
-const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),adjustBtn=$('adjustBtn'),historyBtn=$('historyBtn'),resetBtn=$('resetBtn');
+const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),adjustBtn=$('adjustBtn'),saveBtn=$('saveBtn'),historyBtn=$('historyBtn'),resetBtn=$('resetBtn');
 const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn');
 const compareRange=$('compareRange'),modeLabel=$('modeLabel'),modeValue=$('modeValue');
 const manualPanel=$('manualPanel');
@@ -560,8 +604,9 @@ const rotateMinus=$('rotateMinus'),rotatePlus=$('rotatePlus'),scaleMinus=$('scal
 const manualXValue=$('manualXValue'),manualYValue=$('manualYValue'),manualRotateValue=$('manualRotateValue'),manualScaleValue=$('manualScaleValue');
 const manualResetBtn=$('manualResetBtn');
 const statusEl=$('status'),hint=$('hint');
-const historyModal=$('historyModal'),historyList=$('historyList'),historyCount=$('historyCount');
+const historyModal=$('historyModal'),historyList=$('historyList'),savedList=$('savedList'),historyCount=$('historyCount');
 const closeHistoryBtn=$('closeHistoryBtn'),clearHistoryBtn=$('clearHistoryBtn');
+const historyTabBtn=$('historyTabBtn'),savedTabBtn=$('savedTabBtn'),collectionTitle=$('collectionTitle');
 
 let imgA=null,imgB=null;
 let blobA=null,blobB=null;
@@ -587,7 +632,7 @@ function status(t){statusEl.textContent=t}
 
 function controlsReady(){
   const ok=!!(imgA&&imgB);
-  [swapBtn,alignBtn,adjustBtn,splitBtn,fadeBtn,compareRange,resetBtn].forEach(x=>x.disabled=!ok);
+  [swapBtn,alignBtn,adjustBtn,saveBtn,splitBtn,fadeBtn,compareRange,resetBtn].forEach(x=>x.disabled=!ok);
   hint.classList.toggle('hidden',!!(imgA||imgB));
 }
 
@@ -1006,7 +1051,7 @@ function fmeta(f){
   };
 }
 
-async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
+async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true,auto=true}={}){
   status('画像を読み込み中…');
 
   const [a,b]=await Promise.all([fileToImage(aBlob),fileToImage(bBlob)]);
@@ -1029,7 +1074,7 @@ async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
     saveCurrentPair().catch(()=>{});
   }
 
-  await autoAlign(true);
+  if(auto)await autoAlign(true);
 }
 
 filesInput.addEventListener('change',async e=>{
@@ -1572,6 +1617,7 @@ alignBtn.onclick=async()=>{
 /* ---------- 比較履歴：端末内に最大20組 ---------- */
 const DB_NAME='image-compare-history-v2';
 const STORE='pairs';
+const SAVED_STORE='saved';
 const MAX_HISTORY=20;
 let dbPromise=null;
 
@@ -1579,13 +1625,22 @@ function openDb(){
   if(dbPromise)return dbPromise;
 
   dbPromise=new Promise((resolve,reject)=>{
-    const q=indexedDB.open(DB_NAME,1);
+    const q=indexedDB.open(DB_NAME,2);
 
     q.onupgradeneeded=()=>{
       const db=q.result;
-      const st=db.createObjectStore(STORE,{keyPath:'id'});
-      st.createIndex('createdAt','createdAt');
-      st.createIndex('pairKey','pairKey');
+
+      if(!db.objectStoreNames.contains(STORE)){
+        const st=db.createObjectStore(STORE,{keyPath:'id'});
+        st.createIndex('createdAt','createdAt');
+        st.createIndex('pairKey','pairKey');
+      }
+
+      if(!db.objectStoreNames.contains(SAVED_STORE)){
+        const sv=db.createObjectStore(SAVED_STORE,{keyPath:'id'});
+        sv.createIndex('savedAt','savedAt');
+        sv.createIndex('pairKey','pairKey');
+      }
     };
 
     q.onsuccess=()=>resolve(q.result);
@@ -1617,6 +1672,128 @@ async function thumb(blob,max=160){
   c.getContext('2d').drawImage(im,0,0,c.width,c.height);
 
   return await new Promise(r=>c.toBlob(r,'image/jpeg',.72));
+}
+
+
+function canvasToBlob(canvas){
+  if(!canvas)return Promise.resolve(null);
+  return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+}
+
+async function blobToCanvas(blob){
+  if(!blob)return null;
+  const im=await fileToImage(blob);
+  const c=document.createElement('canvas');
+  c.width=im.naturalWidth;
+  c.height=im.naturalHeight;
+  c.getContext('2d').drawImage(im,0,0);
+  return c;
+}
+
+function currentState(){
+  return {
+    mode,
+    splitPct,
+    fadePct,
+    zoom,
+    viewOffsetX,
+    viewOffsetY,
+    swappedView,
+    manualOffsetX,
+    manualOffsetY,
+    manualRotation,
+    manualScaleFactor
+  };
+}
+
+function applySavedState(s={}){
+  mode=s.mode==='fade'?'fade':'split';
+  splitPct=Number.isFinite(s.splitPct)?s.splitPct:50;
+  fadePct=Number.isFinite(s.fadePct)?s.fadePct:50;
+  zoom=Number.isFinite(s.zoom)?s.zoom:1;
+  viewOffsetX=Number.isFinite(s.viewOffsetX)?s.viewOffsetX:0;
+  viewOffsetY=Number.isFinite(s.viewOffsetY)?s.viewOffsetY:0;
+  swappedView=!!s.swappedView;
+  manualOffsetX=Number.isFinite(s.manualOffsetX)?s.manualOffsetX:0;
+  manualOffsetY=Number.isFinite(s.manualOffsetY)?s.manualOffsetY:0;
+  manualRotation=Number.isFinite(s.manualRotation)?s.manualRotation:0;
+  manualScaleFactor=Number.isFinite(s.manualScaleFactor)?s.manualScaleFactor:1;
+
+  splitBtn.classList.toggle('active',mode==='split');
+  fadeBtn.classList.toggle('active',mode==='fade');
+  updateManualOutputs();
+  applyMode();
+}
+
+async function allSaved(){
+  const db=await openDb();
+  const tx=db.transaction(SAVED_STORE,'readonly');
+  const list=await reqp(tx.objectStore(SAVED_STORE).getAll());
+  return list.sort((a,b)=>b.savedAt-a.savedAt);
+}
+
+async function saveFavorite(){
+  if(!blobA||!blobB)return;
+
+  const suggested='保存 '+new Intl.DateTimeFormat(
+    'ja-JP',
+    {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}
+  ).format(new Date());
+
+  const tag=prompt('保存名・タグを入力',suggested);
+  if(tag===null)return;
+
+  saveBtn.disabled=true;
+  status('現在の比較状態を保存中…');
+
+  try{
+    let ta=null,tb=null,alignedBlob=null;
+    try{
+      [ta,tb,alignedBlob]=await Promise.all([
+        thumb(blobA),
+        thumb(blobB),
+        canvasToBlob(alignedCanvas)
+      ]);
+    }catch(_){}
+
+    const item={
+      id:'s-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+      pairKey:pairKey(),
+      savedAt:Date.now(),
+      tag:(tag.trim()||suggested),
+      blobA,blobB,metaA,metaB,
+      thumbA:ta,thumbB:tb,
+      alignedBlob,
+      state:currentState()
+    };
+
+    const db=await openDb();
+    const tx=db.transaction(SAVED_STORE,'readwrite');
+    await reqp(tx.objectStore(SAVED_STORE).put(item));
+
+    try{navigator.storage?.persist?.()}catch(_){}
+    status('★ 保存しました');
+  }catch(err){
+    console.error(err);
+    status('保存に失敗しました');
+  }finally{
+    controlsReady();
+  }
+}
+
+async function openSavedItem(it){
+  closeHistory();
+  openingHistory=true;
+
+  try{
+    await loadPair(it.blobA,it.blobB,it.metaA,it.metaB,{save:false,auto:false});
+    alignedCanvas=await blobToCanvas(it.alignedBlob);
+    applySavedState(it.state||{});
+    draw();
+    status('保存済みの調整状態を復元しました');
+  }finally{
+    openingHistory=false;
+  }
 }
 
 async function allHistory(){
@@ -1749,8 +1926,103 @@ async function renderHistory(){
   }
 }
 
+
+async function renderSaved(){
+  const list=await allSaved();
+  savedList.innerHTML='';
+
+  if(!list.length){
+    savedList.innerHTML='<div class="historyEmpty">保存済みはありません<br>比較中に「★保存」で登録できます</div>';
+    return;
+  }
+
+  for(const it of list){
+    const row=document.createElement('div');
+    row.className='historyItem';
+
+    const thumbs=document.createElement('div');
+    thumbs.className='historyThumbs';
+
+    for(const bb of [it.thumbA||it.blobA,it.thumbB||it.blobB]){
+      const im=document.createElement('img');
+      const u=objUrl(bb);
+      im.src=u;
+      im.onload=()=>URL.revokeObjectURL(u);
+      thumbs.append(im);
+    }
+
+    const meta=document.createElement('div');
+    meta.className='historyMeta';
+
+    const tag=document.createElement('div');
+    tag.className='savedTag';
+    tag.textContent='★ '+(it.tag||'保存済み');
+
+    const date=document.createElement('div');
+    date.className='date';
+    date.textContent=fmtDate(it.savedAt);
+
+    const names=document.createElement('div');
+    names.className='names';
+    names.textContent=(it.metaA?.name||'画像1')+' × '+(it.metaB?.name||'画像2');
+
+    meta.append(tag,date,names);
+
+    const actions=document.createElement('div');
+    actions.className='savedActions';
+
+    const op=document.createElement('button');
+    op.textContent='復元';
+    op.onclick=()=>openSavedItem(it);
+
+    const rename=document.createElement('button');
+    rename.textContent='名前';
+    rename.onclick=async()=>{
+      const next=prompt('保存名・タグを変更',it.tag||'保存済み');
+      if(next===null)return;
+      it.tag=next.trim()||'保存済み';
+
+      const db=await openDb();
+      const tx=db.transaction(SAVED_STORE,'readwrite');
+      await reqp(tx.objectStore(SAVED_STORE).put(it));
+      await renderSaved();
+    };
+
+    const del=document.createElement('button');
+    del.textContent='削除';
+    del.className='danger';
+    del.onclick=async()=>{
+      const db=await openDb();
+      const tx=db.transaction(SAVED_STORE,'readwrite');
+      await reqp(tx.objectStore(SAVED_STORE).delete(it.id));
+      await renderSaved();
+    };
+
+    actions.append(op,rename,del);
+    row.append(thumbs,meta,actions);
+    savedList.append(row);
+  }
+}
+
+function showCollectionTab(tab){
+  const saved=tab==='saved';
+
+  historyList.classList.toggle('hidden',saved);
+  savedList.classList.toggle('hidden',!saved);
+
+  historyTabBtn.classList.toggle('active',!saved);
+  savedTabBtn.classList.toggle('active',saved);
+
+  collectionTitle.textContent=saved?'保存済み':'比較履歴';
+  clearHistoryBtn.style.display=saved?'none':'flex';
+
+  if(saved)renderSaved();
+  else renderHistory();
+}
+
 async function openHistory(){
   await renderHistory();
+  showCollectionTab('history');
   historyModal.classList.add('open');
   historyModal.setAttribute('aria-hidden','false');
 }
@@ -1760,7 +2032,10 @@ function closeHistory(){
   historyModal.setAttribute('aria-hidden','true');
 }
 
+saveBtn.onclick=saveFavorite;
 historyBtn.onclick=openHistory;
+historyTabBtn.onclick=()=>showCollectionTab('history');
+savedTabBtn.onclick=()=>showCollectionTab('saved');
 closeHistoryBtn.onclick=closeHistory;
 historyModal.addEventListener('click',e=>{
   if(e.target===historyModal)closeHistory();
