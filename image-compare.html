@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.14">
+<meta name="app-version" content="2026.10.05.15">
 <title>画像比較</title>
 
 <style>
@@ -217,39 +217,42 @@ input[type=file]{display:none}
 }
 
 
-/* 手動位置合わせ：十字キー中心の直感操作 */
+/* 手動位置合わせ：大きい十字キー */
 #manualPanel{
   display:none;
   margin-top:4px;
-  padding:5px;
-  border-radius:9px;
+  padding:6px;
+  border-radius:10px;
   background:#1c1c20;
   border:1px solid rgba(255,255,255,.08);
 }
 #manualPanel.open{display:block}
+
 #manualLayout{
   display:grid;
-  grid-template-columns:112px 1fr;
-  gap:7px;
+  grid-template-columns:166px 1fr;
+  gap:8px;
   align-items:center;
 }
+
+/* 中央ボタンなし。上下左右だけ大きく配置 */
 #dpad{
-  width:106px;
-  height:106px;
+  width:160px;
+  height:160px;
   display:grid;
-  grid-template-columns:34px 34px 34px;
-  grid-template-rows:34px 34px 34px;
-  gap:2px;
+  grid-template-columns:50px 50px 50px;
+  grid-template-rows:50px 50px 50px;
+  gap:5px;
   justify-content:center;
   align-content:center;
 }
 .dpadBtn{
-  width:34px;
-  height:34px;
+  width:50px;
+  height:50px;
   padding:0;
-  border-radius:8px;
-  background:#34343a;
-  font-size:17px;
+  border-radius:12px;
+  background:#3a3a40;
+  font-size:24px;
   font-weight:900;
   touch-action:none;
   user-select:none;
@@ -257,18 +260,18 @@ input[type=file]{display:none}
 }
 #moveUp{grid-column:2;grid-row:1}
 #moveLeft{grid-column:1;grid-row:2}
-#moveCenter{grid-column:2;grid-row:2;font-size:10px;background:#4b4b52}
 #moveRight{grid-column:3;grid-row:2}
 #moveDown{grid-column:2;grid-row:3}
+
 #manualFine{
   min-width:0;
   display:grid;
-  gap:6px;
+  gap:8px;
 }
 .manualStepper{
   display:grid;
-  grid-template-columns:42px 36px 1fr 36px;
-  gap:4px;
+  grid-template-columns:42px 44px 1fr 44px;
+  gap:5px;
   align-items:center;
 }
 .manualStepper label{
@@ -276,11 +279,11 @@ input[type=file]{display:none}
   font-size:11px;
 }
 .manualStepper button{
-  height:32px;
+  height:42px;
   padding:0;
-  border-radius:8px;
-  font-size:17px;
-  font-weight:800;
+  border-radius:10px;
+  font-size:21px;
+  font-weight:850;
   touch-action:none;
 }
 .manualStepper output{
@@ -289,9 +292,9 @@ input[type=file]{display:none}
   font-size:11px;
   color:#fff;
   background:#27272c;
-  border-radius:8px;
-  height:32px;
-  line-height:32px;
+  border-radius:9px;
+  height:42px;
+  line-height:42px;
   white-space:nowrap;
 }
 #manualPosition{
@@ -307,7 +310,7 @@ input[type=file]{display:none}
   align-items:center;
   justify-content:space-between;
   gap:6px;
-  margin-top:3px;
+  margin-top:4px;
 }
 #manualHint{
   flex:1;
@@ -319,9 +322,29 @@ input[type=file]{display:none}
   text-overflow:ellipsis;
 }
 #manualResetBtn{
-  height:28px;
-  padding:0 9px;
+  height:30px;
+  padding:0 10px;
   font-size:10px;
+}
+
+/* 調整中は不要なUIを隠す。
+   調整終了ボタンとフェード量スライダーだけ残す */
+#bottomPanel.manual-active #buttonRow{
+  grid-template-columns:1fr;
+}
+#bottomPanel.manual-active #buttonRow > *{
+  display:none;
+}
+#bottomPanel.manual-active #adjustBtn{
+  display:flex;
+  width:100%;
+  background:#4a4a52;
+}
+#bottomPanel.manual-active #modeRow{
+  display:none;
+}
+#bottomPanel.manual-active #sliderDock{
+  display:flex;
 }
 
 /* 履歴 */
@@ -449,8 +472,7 @@ input[type=file]{display:none}
         <div id="dpad" aria-label="画像2の位置調整">
           <button id="moveUp" class="dpadBtn" aria-label="上へ">▲</button>
           <button id="moveLeft" class="dpadBtn" aria-label="左へ">◀</button>
-          <button id="moveCenter" class="dpadBtn" aria-label="位置を中央へ">中央</button>
-          <button id="moveRight" class="dpadBtn" aria-label="右へ">▶</button>
+                    <button id="moveRight" class="dpadBtn" aria-label="右へ">▶</button>
           <button id="moveDown" class="dpadBtn" aria-label="下へ">▼</button>
         </div>
 
@@ -464,9 +486,9 @@ input[type=file]{display:none}
 
           <div class="manualStepper">
             <label>倍率</label>
-            <button id="scaleMinus" aria-label="縮小">−</button>
+            <button id="scaleMinus" aria-label="縮小">▼</button>
             <output id="manualScaleValue">100.0%</output>
-            <button id="scalePlus" aria-label="拡大">＋</button>
+            <button id="scalePlus" aria-label="拡大">▲</button>
           </div>
 
           <div id="manualPosition">
@@ -477,7 +499,7 @@ input[type=file]{display:none}
       </div>
 
       <div id="manualFooter">
-        <span id="manualHint">矢印は長押しできます</span>
+        <span id="manualHint">十字・回転・倍率は長押しできます</span>
         <button id="manualResetBtn">補正リセット</button>
       </div>
     </div>
@@ -526,7 +548,7 @@ const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),adjustBtn=$('adjustBtn'),histo
 const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn');
 const compareRange=$('compareRange'),modeLabel=$('modeLabel'),modeValue=$('modeValue');
 const manualPanel=$('manualPanel');
-const moveUp=$('moveUp'),moveDown=$('moveDown'),moveLeft=$('moveLeft'),moveRight=$('moveRight'),moveCenter=$('moveCenter');
+const moveUp=$('moveUp'),moveDown=$('moveDown'),moveLeft=$('moveLeft'),moveRight=$('moveRight');
 const rotateMinus=$('rotateMinus'),rotatePlus=$('rotatePlus'),scaleMinus=$('scaleMinus'),scalePlus=$('scalePlus');
 const manualXValue=$('manualXValue'),manualYValue=$('manualYValue'),manualRotateValue=$('manualRotateValue'),manualScaleValue=$('manualScaleValue');
 const manualResetBtn=$('manualResetBtn');
@@ -862,14 +884,19 @@ function resetManual(redraw=true){
 
 adjustBtn.onclick=()=>{
   const open=!manualPanel.classList.contains('open');
+
   manualPanel.classList.toggle('open',open);
   adjustBtn.classList.toggle('active',open);
+  bottomPanel.classList.toggle('manual-active',open);
 
   if(open){
-    // 手動位置合わせでは2枚を同時に見やすいよう自動でフェードへ
     setMode('fade');
+    adjustBtn.textContent='調整終了';
     updateManualOutputs();
-    status('フェードモード：矢印で画像2を移動。長押しで連続移動できます');
+    status('調整中：十字で移動、回転、倍率を調整');
+  }else{
+    adjustBtn.textContent='調整';
+    status('手動調整を終了しました');
   }
 
   updateViewportLayout();
@@ -944,13 +971,6 @@ bindHoldButton(rotatePlus,'rot+');
 bindHoldButton(scaleMinus,'scale-');
 bindHoldButton(scalePlus,'scale+');
 
-moveCenter.onclick=()=>{
-  manualOffsetX=0;
-  manualOffsetY=0;
-  updateManualOutputs();
-  draw();
-  status('位置だけ中央に戻しました');
-};
 
 manualResetBtn.onclick=()=>{
   resetManual(true);
