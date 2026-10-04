@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.15">
+<meta name="app-version" content="2026.10.05.16">
 <title>画像比較</title>
 
 <style>
@@ -330,14 +330,21 @@ input[type=file]{display:none}
 /* 調整中は不要なUIを隠す。
    調整終了ボタンとフェード量スライダーだけ残す */
 #bottomPanel.manual-active #buttonRow{
-  grid-template-columns:1fr;
+  grid-template-columns:1fr 1fr;
 }
 #bottomPanel.manual-active #buttonRow > *{
   display:none;
 }
+/* 調整中は「再合致」と「調整終了」だけ残す */
+#bottomPanel.manual-active #alignBtn,
 #bottomPanel.manual-active #adjustBtn{
   display:flex;
   width:100%;
+}
+#bottomPanel.manual-active #alignBtn{
+  background:#2b2b30;
+}
+#bottomPanel.manual-active #adjustBtn{
   background:#4a4a52;
 }
 #bottomPanel.manual-active #modeRow{
@@ -893,7 +900,7 @@ adjustBtn.onclick=()=>{
     setMode('fade');
     adjustBtn.textContent='調整終了';
     updateManualOutputs();
-    status('調整中：十字で移動、回転、倍率を調整');
+    status('調整中：必要なら「再合致」も使えます');
   }else{
     adjustBtn.textContent='調整';
     status('手動調整を終了しました');
