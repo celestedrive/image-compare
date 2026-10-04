@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.13">
+<meta name="app-version" content="2026.10.05.14">
 <title>画像比較</title>
 
 <style>
@@ -95,14 +95,16 @@ button{color:inherit}
   right:0;
   bottom:0;
   margin:0;
-  height:auto;
+  height:max-content;
   min-height:0;
+  max-height:none;
+  overflow:visible;
   background:#101012;
   border-top:1px solid var(--line);
   padding:
     2px
     calc(4px + var(--safe-r))
-    calc(2px + var(--safe-b))
+    0
     calc(4px + var(--safe-l));
 }
 #status{
@@ -177,8 +179,7 @@ input[type=file]{display:none}
 /* 指の移動量を減らすため、比較バーは短めに中央配置 */
 #sliderDock{
   width:100%;
-  height:39px;
-  flex:0 0 39px;
+  height:34px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -190,7 +191,7 @@ input[type=file]{display:none}
   appearance:none;
   -webkit-appearance:none;
   width:min(62vw,320px);
-  height:36px;
+  height:34px;
   margin:0;
   padding:0;
   background:transparent;
@@ -1752,28 +1753,55 @@ clearHistoryBtn.onclick=async()=>{
 refreshHistoryCount();
 
 
-/* ---------- 下部パネル実測 ----------
-   パネル自体は viewport の bottom:0 に直接固定する。
-   visualViewport.height ではアプリ全体を縮めない。
-   iPhoneホーム画面で下に空洞が残る原因をここで排除する。 */
+/* ---------- 下部余白を強制除去 ----------
+   iOS standalone で footer の used-height が内容より大きく残る場合があるため、
+   footer自身の高さではなく「最後に見えている子要素の下端」を測る。
+   その位置で bottomPanel を強制的に切るので、スライダー下に空洞は残らない。 */
+let layoutRAF=0;
+
 function updateViewportLayout(){
-  requestAnimationFrame(()=>{
-    const panelH=Math.ceil(bottomPanel.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--panel-h',panelH+'px');
-    app.style.setProperty('--panel-h',panelH+'px');
+  cancelAnimationFrame(layoutRAF);
+
+  layoutRAF=requestAnimationFrame(()=>{
+    const panelRect=bottomPanel.getBoundingClientRect();
+
+    const visibleChildren=[...bottomPanel.children].filter(el=>{
+      const s=getComputedStyle(el);
+      return s.display!=='none' && s.visibility!=='hidden';
+    });
+
+    const last=visibleChildren[visibleChildren.length-1];
+
+    if(last){
+      const lastRect=last.getBoundingClientRect();
+      const exactHeight=Math.max(
+        1,
+        Math.ceil(lastRect.bottom-panelRect.top)
+      );
+
+      bottomPanel.style.height=exactHeight+'px';
+      document.documentElement.style.setProperty('--panel-h',exactHeight+'px');
+      app.style.setProperty('--panel-h',exactHeight+'px');
+    }
+
     draw();
   });
 }
 
-const layoutObserver=new ResizeObserver(()=>updateViewportLayout());
+const layoutObserver=new ResizeObserver(updateViewportLayout);
 layoutObserver.observe(bottomPanel);
+
+for(const el of bottomPanel.children){
+  layoutObserver.observe(el);
+}
 
 window.addEventListener('load',updateViewportLayout);
 window.addEventListener('resize',updateViewportLayout);
-window.addEventListener('orientationchange',()=>setTimeout(updateViewportLayout,120));
+window.addEventListener('orientationchange',()=>setTimeout(updateViewportLayout,100));
 
 setTimeout(updateViewportLayout,0);
-setTimeout(updateViewportLayout,250);
+setTimeout(updateViewportLayout,150);
+setTimeout(updateViewportLayout,500);
 
 /* ---------- GitHub Pagesの最新版を自動反映 ---------- */
 const APP_VERSION=document.querySelector('meta[name="app-version"]')?.content||'0';
