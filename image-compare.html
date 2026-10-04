@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.11">
+<meta name="app-version" content="2026.10.05.12">
 <title>画像比較</title>
 
 <style>
@@ -542,6 +542,8 @@ let mode='split';
 let splitPct=50;
 let fadePct=50;
 let zoom=1;
+let viewOffsetX=0;
+let viewOffsetY=0;
 let swappedView=false;
 let manualOffsetX=0;
 let manualOffsetY=0;
@@ -592,8 +594,8 @@ function draw(){
     const r={
       w:base.w*zoom,
       h:base.h*zoom,
-      x:W/2-(base.w*zoom)/2,
-      y:H/2-(base.h*zoom)/2
+      x:W/2+viewOffsetX-(base.w*zoom)/2,
+      y:H/2+viewOffsetY-(base.h*zoom)/2
     };
 
     const drawReference=(ctx)=>{
@@ -615,13 +617,13 @@ function draw(){
         br={
           w:bb.w*zoom,
           h:bb.h*zoom,
-          x:W/2-(bb.w*zoom)/2,
-          y:H/2-(bb.h*zoom)/2
+          x:W/2+viewOffsetX-(bb.w*zoom)/2,
+          y:H/2+viewOffsetY-(bb.h*zoom)/2
         };
       }
 
-      const cx=W/2;
-      const cy=H/2;
+      const cx=W/2+viewOffsetX;
+      const cy=H/2+viewOffsetY;
       const dx=(manualOffsetX/100)*r.w;
       const dy=(manualOffsetY/100)*r.h;
 
@@ -652,8 +654,8 @@ function draw(){
     const r={
       w:base.w*zoom,
       h:base.h*zoom,
-      x:W/2-(base.w*zoom)/2,
-      y:H/2-(base.h*zoom)/2
+      x:W/2+viewOffsetX-(base.w*zoom)/2,
+      y:H/2+viewOffsetY-(base.h*zoom)/2
     };
     ctxB.drawImage(imgB,r.x,r.y,r.w,r.h);
   }
@@ -701,10 +703,22 @@ compareRange.addEventListener('input',()=>{
 });
 
 
-/* ---------- ピンチズーム（2枚を同時に同倍率で拡大縮小） ---------- */
+/* ---------- ピンチズーム / 見たい位置を基準に拡大 ---------- */
 let zoomPointers=new Map();
 let pinchStartDistance=0;
 let pinchStartZoom=1;
+let pinchAnchorContentX=0;
+let pinchAnchorContentY=0;
+let dragPointerId=null;
+let dragStartX=0;
+let dragStartY=0;
+let dragStartOffsetX=0;
+let dragStartOffsetY=0;
+
+function stagePoint(clientX,clientY){
+  const r=stage.getBoundingClientRect();
+  return {x:clientX-r.left,y:clientY-r.top};
+}
 
 function pointerDistance(){
   const p=[...zoomPointers.values()];
@@ -712,22 +726,77 @@ function pointerDistance(){
   return Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
 }
 
+function pointerMidpoint(){
+  const p=[...zoomPointers.values()];
+  if(p.length<2)return null;
+  return {
+    x:(p[0].x+p[1].x)/2,
+    y:(p[0].y+p[1].y)/2
+  };
+}
+
 stage.addEventListener('pointerdown',e=>{
   if(!imgA)return;
-  zoomPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  const pt=stagePoint(e.clientX,e.clientY);
+  zoomPointers.set(e.pointerId,pt);
+
+  if(zoomPointers.size===1){
+    // ズーム後は1本指でも見たい場所へ移動できる
+    dragPointerId=e.pointerId;
+    dragStartX=pt.x;
+    dragStartY=pt.y;
+    dragStartOffsetX=viewOffsetX;
+    dragStartOffsetY=viewOffsetY;
+  }
+
   if(zoomPointers.size===2){
+    dragPointerId=null;
     pinchStartDistance=pointerDistance();
     pinchStartZoom=zoom;
+
+    const mid=pointerMidpoint();
+    const W=stage.clientWidth;
+    const H=stage.clientHeight;
+
+    // 指の中央にある画像上の点を覚える。
+    // 拡大後もその点が指の中央に残るよう offset を再計算する。
+    pinchAnchorContentX=(mid.x-W/2-viewOffsetX)/pinchStartZoom;
+    pinchAnchorContentY=(mid.y-H/2-viewOffsetY)/pinchStartZoom;
   }
+
+  try{stage.setPointerCapture(e.pointerId)}catch(_){}
 });
 
 stage.addEventListener('pointermove',e=>{
   if(!zoomPointers.has(e.pointerId))return;
-  zoomPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  const pt=stagePoint(e.clientX,e.clientY);
+  zoomPointers.set(e.pointerId,pt);
 
   if(zoomPointers.size===2 && pinchStartDistance>0){
     const d=pointerDistance();
-    zoom=Math.max(0.65,Math.min(6,pinchStartZoom*(d/pinchStartDistance)));
+    const newZoom=Math.max(0.65,Math.min(6,pinchStartZoom*(d/pinchStartDistance)));
+    const mid=pointerMidpoint();
+    const W=stage.clientWidth;
+    const H=stage.clientHeight;
+
+    zoom=newZoom;
+    viewOffsetX=mid.x-W/2-pinchAnchorContentX*zoom;
+    viewOffsetY=mid.y-H/2-pinchAnchorContentY*zoom;
+
+    draw();
+    e.preventDefault();
+    return;
+  }
+
+  if(
+    zoomPointers.size===1 &&
+    dragPointerId===e.pointerId &&
+    zoom>1.001
+  ){
+    viewOffsetX=dragStartOffsetX+(pt.x-dragStartX);
+    viewOffsetY=dragStartOffsetY+(pt.y-dragStartY);
     draw();
     e.preventDefault();
   }
@@ -735,20 +804,37 @@ stage.addEventListener('pointermove',e=>{
 
 function endZoomPointer(e){
   zoomPointers.delete(e.pointerId);
+
   if(zoomPointers.size<2){
     pinchStartDistance=0;
     pinchStartZoom=zoom;
   }
+
+  if(zoomPointers.size===1){
+    const remaining=[...zoomPointers.entries()][0];
+    dragPointerId=remaining[0];
+    dragStartX=remaining[1].x;
+    dragStartY=remaining[1].y;
+    dragStartOffsetX=viewOffsetX;
+    dragStartOffsetY=viewOffsetY;
+  }else if(zoomPointers.size===0){
+    dragPointerId=null;
+  }
+
+  try{stage.releasePointerCapture(e.pointerId)}catch(_){}
 }
+
 stage.addEventListener('pointerup',endZoomPointer);
 stage.addEventListener('pointercancel',endZoomPointer);
-stage.addEventListener('pointerleave',endZoomPointer);
+stage.addEventListener('lostpointercapture',endZoomPointer);
 
-/* ダブルタップ/ダブルクリックで倍率だけ1倍へ */
+/* ダブルタップ/ダブルクリックで表示だけ標準へ */
 stage.addEventListener('dblclick',()=>{
   zoom=1;
+  viewOffsetX=0;
+  viewOffsetY=0;
   draw();
-  status('ズームを1倍に戻しました');
+  status('ズームと表示位置を標準に戻しました');
 });
 
 
@@ -779,8 +865,10 @@ adjustBtn.onclick=()=>{
   adjustBtn.classList.toggle('active',open);
 
   if(open){
+    // 手動位置合わせでは2枚を同時に見やすいよう自動でフェードへ
+    setMode('fade');
     updateManualOutputs();
-    status('矢印で画像2を移動。長押しで連続移動できます');
+    status('フェードモード：矢印で画像2を移動。長押しで連続移動できます');
   }
 
   updateViewportLayout();
@@ -900,6 +988,8 @@ async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
 
   alignedCanvas=null;
   zoom=1;
+  viewOffsetX=0;
+  viewOffsetY=0;
   swappedView=false;
   resetManual(false);
   splitPct=50;fadePct=50;
@@ -942,6 +1032,9 @@ filesInput.addEventListener('change',async e=>{
         metaB=null;
 
         alignedCanvas=null;
+        zoom=1;
+        viewOffsetX=0;
+        viewOffsetY=0;
         swappedView=false;
         resetManual(false);
         splitPct=50;
@@ -979,6 +1072,8 @@ swapBtn.onclick=()=>{
 
 resetBtn.onclick=()=>{
   zoom=1;
+  viewOffsetX=0;
+  viewOffsetY=0;
   swappedView=false;
   resetManual(false);
   splitPct=50;
@@ -1426,6 +1521,8 @@ alignBtn.onclick=async()=>{
     scale:manualScaleFactor
   };
   const keepZoom=zoom;
+  const keepViewX=viewOffsetX;
+  const keepViewY=viewOffsetY;
   const keepSwapped=swappedView;
 
   await autoAlign(false);
@@ -1435,6 +1532,8 @@ alignBtn.onclick=async()=>{
   manualRotation=keepManual.rotation;
   manualScaleFactor=keepManual.scale;
   zoom=keepZoom;
+  viewOffsetX=keepViewX;
+  viewOffsetY=keepViewY;
   swappedView=keepSwapped;
 
   updateManualOutputs();
