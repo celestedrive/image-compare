@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.8">
+<meta name="app-version" content="2026.10.05.11">
 <title>画像比較</title>
 
 <style>
@@ -35,9 +35,10 @@ button,input{font:inherit}
 button{color:inherit}
 #app{
   position:fixed;
-  inset:0;
-  display:flex;
-  flex-direction:column;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
   background:#000;
   overflow:hidden;
 }
@@ -47,8 +48,11 @@ button{color:inherit}
 
 /* 画像表示域は残り全部。操作UIは一切重ならない */
 #stage{
-  position:relative;
-  flex:1 1 auto;
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:var(--panel-h,132px);
   min-height:0;
   overflow:hidden;
   background:#000;
@@ -88,10 +92,12 @@ button{color:inherit}
 
 /* 下部操作部も通常レイアウト。余白を作らず画像に重ならない */
 #bottomPanel{
-  flex:0 0 auto;
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
   height:auto;
   min-height:0;
-  max-height:none;
   background:rgba(15,15,17,.99);
   border-top:1px solid var(--line);
   padding:
@@ -211,7 +217,7 @@ input[type=file]{display:none}
 }
 
 
-/* 手動位置合わせ：必要な時だけ開く */
+/* 手動位置合わせ：十字キー中心の直感操作 */
 #manualPanel{
   display:none;
   margin-top:4px;
@@ -221,62 +227,80 @@ input[type=file]{display:none}
   border:1px solid rgba(255,255,255,.08);
 }
 #manualPanel.open{display:block}
-#manualGrid{
+#manualLayout{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:5px 8px;
+  grid-template-columns:112px 1fr;
+  gap:7px;
+  align-items:center;
 }
-.manualControl{
+#dpad{
+  width:106px;
+  height:106px;
   display:grid;
-  grid-template-columns:30px 1fr 42px;
+  grid-template-columns:34px 34px 34px;
+  grid-template-rows:34px 34px 34px;
+  gap:2px;
+  justify-content:center;
+  align-content:center;
+}
+.dpadBtn{
+  width:34px;
+  height:34px;
+  padding:0;
+  border-radius:8px;
+  background:#34343a;
+  font-size:17px;
+  font-weight:900;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#moveUp{grid-column:2;grid-row:1}
+#moveLeft{grid-column:1;grid-row:2}
+#moveCenter{grid-column:2;grid-row:2;font-size:10px;background:#4b4b52}
+#moveRight{grid-column:3;grid-row:2}
+#moveDown{grid-column:2;grid-row:3}
+#manualFine{
+  min-width:0;
+  display:grid;
+  gap:6px;
+}
+.manualStepper{
+  display:grid;
+  grid-template-columns:42px 36px 1fr 36px;
   gap:4px;
   align-items:center;
-  min-width:0;
 }
-.manualControl label{
-  font-size:11px;
+.manualStepper label{
   color:var(--muted);
-  text-align:center;
+  font-size:11px;
 }
-.manualControl output{
-  font-size:10px;
+.manualStepper button{
+  height:32px;
+  padding:0;
+  border-radius:8px;
+  font-size:17px;
+  font-weight:800;
+  touch-action:none;
+}
+.manualStepper output{
+  min-width:0;
+  text-align:center;
+  font-size:11px;
   color:#fff;
-  text-align:right;
+  background:#27272c;
+  border-radius:8px;
+  height:32px;
+  line-height:32px;
   white-space:nowrap;
 }
-.manualControl input[type=range]{
-  appearance:none;
-  -webkit-appearance:none;
-  width:100%;
-  height:28px;
-  margin:0;
-  background:transparent;
-}
-.manualControl input[type=range]::-webkit-slider-runnable-track{
-  height:5px;
-  border-radius:999px;
-  background:#5d5d64;
-}
-.manualControl input[type=range]::-webkit-slider-thumb{
-  appearance:none;
-  -webkit-appearance:none;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  margin-top:-9.5px;
-  background:#fff;
-}
-.manualControl input[type=range]::-moz-range-track{
-  height:5px;
-  border-radius:999px;
-  background:#5d5d64;
-}
-.manualControl input[type=range]::-moz-range-thumb{
-  width:24px;
-  height:24px;
-  border:0;
-  border-radius:50%;
-  background:#fff;
+#manualPosition{
+  display:flex;
+  justify-content:space-between;
+  gap:6px;
+  padding:0 2px;
+  color:var(--muted);
+  font-size:9px;
 }
 #manualFooter{
   display:flex;
@@ -420,30 +444,39 @@ input[type=file]{display:none}
     </div>
 
     <div id="manualPanel">
-      <div id="manualGrid">
-        <div class="manualControl">
-          <label for="manualX">横</label>
-          <input id="manualX" type="range" min="-20" max="20" step="0.1" value="0">
-          <output id="manualXValue">0.0%</output>
+      <div id="manualLayout">
+        <div id="dpad" aria-label="画像2の位置調整">
+          <button id="moveUp" class="dpadBtn" aria-label="上へ">▲</button>
+          <button id="moveLeft" class="dpadBtn" aria-label="左へ">◀</button>
+          <button id="moveCenter" class="dpadBtn" aria-label="位置を中央へ">中央</button>
+          <button id="moveRight" class="dpadBtn" aria-label="右へ">▶</button>
+          <button id="moveDown" class="dpadBtn" aria-label="下へ">▼</button>
         </div>
-        <div class="manualControl">
-          <label for="manualY">縦</label>
-          <input id="manualY" type="range" min="-20" max="20" step="0.1" value="0">
-          <output id="manualYValue">0.0%</output>
-        </div>
-        <div class="manualControl">
-          <label for="manualRotate">回転</label>
-          <input id="manualRotate" type="range" min="-10" max="10" step="0.1" value="0">
-          <output id="manualRotateValue">0.0°</output>
-        </div>
-        <div class="manualControl">
-          <label for="manualScale">倍率</label>
-          <input id="manualScale" type="range" min="80" max="120" step="0.1" value="100">
-          <output id="manualScaleValue">100.0%</output>
+
+        <div id="manualFine">
+          <div class="manualStepper">
+            <label>回転</label>
+            <button id="rotateMinus" aria-label="左回転">−</button>
+            <output id="manualRotateValue">0.0°</output>
+            <button id="rotatePlus" aria-label="右回転">＋</button>
+          </div>
+
+          <div class="manualStepper">
+            <label>倍率</label>
+            <button id="scaleMinus" aria-label="縮小">−</button>
+            <output id="manualScaleValue">100.0%</output>
+            <button id="scalePlus" aria-label="拡大">＋</button>
+          </div>
+
+          <div id="manualPosition">
+            <span id="manualXValue">横 0.0%</span>
+            <span id="manualYValue">縦 0.0%</span>
+          </div>
         </div>
       </div>
+
       <div id="manualFooter">
-        <span id="manualHint">画像2だけを微調整します</span>
+        <span id="manualHint">矢印は長押しできます</span>
         <button id="manualResetBtn">補正リセット</button>
       </div>
     </div>
@@ -480,6 +513,8 @@ input[type=file]{display:none}
 <script>
 const $=id=>document.getElementById(id);
 
+const app=$('app');
+const bottomPanel=$('bottomPanel');
 const stage=$('stage');
 const canvasA=$('canvasA'),canvasB=$('canvasB');
 const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d');
@@ -490,7 +525,8 @@ const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),adjustBtn=$('adjustBtn'),histo
 const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn');
 const compareRange=$('compareRange'),modeLabel=$('modeLabel'),modeValue=$('modeValue');
 const manualPanel=$('manualPanel');
-const manualX=$('manualX'),manualY=$('manualY'),manualRotate=$('manualRotate'),manualScale=$('manualScale');
+const moveUp=$('moveUp'),moveDown=$('moveDown'),moveLeft=$('moveLeft'),moveRight=$('moveRight'),moveCenter=$('moveCenter');
+const rotateMinus=$('rotateMinus'),rotatePlus=$('rotatePlus'),scaleMinus=$('scaleMinus'),scalePlus=$('scalePlus');
 const manualXValue=$('manualXValue'),manualYValue=$('manualYValue'),manualRotateValue=$('manualRotateValue'),manualScaleValue=$('manualScaleValue');
 const manualResetBtn=$('manualResetBtn');
 const statusEl=$('status'),hint=$('hint');
@@ -506,6 +542,7 @@ let mode='split';
 let splitPct=50;
 let fadePct=50;
 let zoom=1;
+let swappedView=false;
 let manualOffsetX=0;
 let manualOffsetY=0;
 let manualRotation=0;
@@ -558,11 +595,16 @@ function draw(){
       x:W/2-(base.w*zoom)/2,
       y:H/2-(base.h*zoom)/2
     };
-    ctxA.drawImage(imgA,r.x,r.y,r.w,r.h);
 
-    if(imgB){
-      let source=null;
-      let br=null;
+    const drawReference=(ctx)=>{
+      ctx.drawImage(imgA,r.x,r.y,r.w,r.h);
+    };
+
+    const drawAdjustedComparison=(ctx)=>{
+      if(!imgB)return;
+
+      let source;
+      let br;
 
       if(alignedCanvas){
         source=alignedCanvas;
@@ -583,13 +625,27 @@ function draw(){
       const dx=(manualOffsetX/100)*r.w;
       const dy=(manualOffsetY/100)*r.h;
 
-      ctxB.save();
-      ctxB.translate(cx+dx,cy+dy);
-      ctxB.rotate(manualRotation*Math.PI/180);
-      ctxB.scale(manualScaleFactor,manualScaleFactor);
-      ctxB.translate(-cx,-cy);
-      ctxB.drawImage(source,br.x,br.y,br.w,br.h);
-      ctxB.restore();
+      ctx.save();
+      ctx.translate(cx+dx,cy+dy);
+      ctx.rotate(manualRotation*Math.PI/180);
+      ctx.scale(manualScaleFactor,manualScaleFactor);
+      ctx.translate(-cx,-cy);
+      ctx.drawImage(source,br.x,br.y,br.w,br.h);
+      ctx.restore();
+    };
+
+    if(imgB){
+      if(swappedView){
+        // 「入替」は画像データや補正値を作り直さず、表示順だけ反転する。
+        // これで手動調整・自動合致・ズームが一切消えない。
+        drawAdjustedComparison(ctxA);
+        drawReference(ctxB);
+      }else{
+        drawReference(ctxA);
+        drawAdjustedComparison(ctxB);
+      }
+    }else{
+      drawReference(ctxA);
     }
   }else if(imgB){
     const base=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
@@ -604,7 +660,6 @@ function draw(){
 
   applyMode();
 }
-
 function applyMode(){
   if(mode==='split'){
     clipLayer.style.opacity='1';
@@ -697,19 +752,15 @@ stage.addEventListener('dblclick',()=>{
 });
 
 
-/* ---------- 手動位置合わせ ---------- */
+/* ---------- 手動位置合わせ：十字キー ---------- */
 function updateManualOutputs(){
-  manualXValue.textContent=manualOffsetX.toFixed(1)+'%';
-  manualYValue.textContent=manualOffsetY.toFixed(1)+'%';
+  manualXValue.textContent='横 '+manualOffsetX.toFixed(1)+'%';
+  manualYValue.textContent='縦 '+manualOffsetY.toFixed(1)+'%';
   manualRotateValue.textContent=manualRotation.toFixed(1)+'°';
   manualScaleValue.textContent=(manualScaleFactor*100).toFixed(1)+'%';
 }
 
 function syncManualInputs(){
-  manualX.value=String(manualOffsetX);
-  manualY.value=String(manualOffsetY);
-  manualRotate.value=String(manualRotation);
-  manualScale.value=String(manualScaleFactor*100);
   updateManualOutputs();
 }
 
@@ -718,7 +769,7 @@ function resetManual(redraw=true){
   manualOffsetY=0;
   manualRotation=0;
   manualScaleFactor=1;
-  syncManualInputs();
+  updateManualOutputs();
   if(redraw)draw();
 }
 
@@ -726,38 +777,98 @@ adjustBtn.onclick=()=>{
   const open=!manualPanel.classList.contains('open');
   manualPanel.classList.toggle('open',open);
   adjustBtn.classList.toggle('active',open);
+
   if(open){
-    syncManualInputs();
-    status('手動調整：横・縦・回転・倍率で画像2を合わせられます');
+    updateManualOutputs();
+    status('矢印で画像2を移動。長押しで連続移動できます');
   }
+
+  updateViewportLayout();
 };
 
-manualX.addEventListener('input',()=>{
-  manualOffsetX=Number(manualX.value);
+function clampManual(){
+  manualOffsetX=Math.max(-30,Math.min(30,manualOffsetX));
+  manualOffsetY=Math.max(-30,Math.min(30,manualOffsetY));
+  manualRotation=Math.max(-15,Math.min(15,manualRotation));
+  manualScaleFactor=Math.max(.70,Math.min(1.30,manualScaleFactor));
+}
+
+function applyManualAction(action){
+  const moveStep=.35;
+  const rotateStep=.20;
+  const scaleStep=.005;
+
+  if(action==='up')manualOffsetY-=moveStep;
+  if(action==='down')manualOffsetY+=moveStep;
+  if(action==='left')manualOffsetX-=moveStep;
+  if(action==='right')manualOffsetX+=moveStep;
+  if(action==='rot-')manualRotation-=rotateStep;
+  if(action==='rot+')manualRotation+=rotateStep;
+  if(action==='scale-')manualScaleFactor-=scaleStep;
+  if(action==='scale+')manualScaleFactor+=scaleStep;
+
+  clampManual();
   updateManualOutputs();
   draw();
-});
-manualY.addEventListener('input',()=>{
-  manualOffsetY=Number(manualY.value);
+}
+
+let repeatTimer=null;
+let repeatDelay=null;
+
+function stopRepeat(){
+  clearTimeout(repeatDelay);
+  clearInterval(repeatTimer);
+  repeatDelay=null;
+  repeatTimer=null;
+}
+
+function bindHoldButton(button,action){
+  const start=e=>{
+    e.preventDefault();
+    stopRepeat();
+    applyManualAction(action);
+
+    repeatDelay=setTimeout(()=>{
+      repeatTimer=setInterval(()=>applyManualAction(action),65);
+    },260);
+
+    try{button.setPointerCapture(e.pointerId)}catch(_){}
+  };
+
+  const end=e=>{
+    stopRepeat();
+    try{button.releasePointerCapture(e.pointerId)}catch(_){}
+  };
+
+  button.addEventListener('pointerdown',start);
+  button.addEventListener('pointerup',end);
+  button.addEventListener('pointercancel',end);
+  button.addEventListener('lostpointercapture',stopRepeat);
+}
+
+bindHoldButton(moveUp,'up');
+bindHoldButton(moveDown,'down');
+bindHoldButton(moveLeft,'left');
+bindHoldButton(moveRight,'right');
+bindHoldButton(rotateMinus,'rot-');
+bindHoldButton(rotatePlus,'rot+');
+bindHoldButton(scaleMinus,'scale-');
+bindHoldButton(scalePlus,'scale+');
+
+moveCenter.onclick=()=>{
+  manualOffsetX=0;
+  manualOffsetY=0;
   updateManualOutputs();
   draw();
-});
-manualRotate.addEventListener('input',()=>{
-  manualRotation=Number(manualRotate.value);
-  updateManualOutputs();
-  draw();
-});
-manualScale.addEventListener('input',()=>{
-  manualScaleFactor=Number(manualScale.value)/100;
-  updateManualOutputs();
-  draw();
-});
+  status('位置だけ中央に戻しました');
+};
+
 manualResetBtn.onclick=()=>{
   resetManual(true);
-  status('手動補正をリセットしました');
+  status('手動補正をすべてリセットしました');
 };
 
-syncManualInputs();
+updateManualOutputs();
 
 /* ---------- 画像読み込み ---------- */
 function fileToImage(blob){
@@ -789,6 +900,8 @@ async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
 
   alignedCanvas=null;
   zoom=1;
+  swappedView=false;
+  resetManual(false);
   splitPct=50;fadePct=50;
   setMode('split');
   controlsReady();
@@ -829,6 +942,7 @@ filesInput.addEventListener('change',async e=>{
         metaB=null;
 
         alignedCanvas=null;
+        swappedView=false;
         resetManual(false);
         splitPct=50;
         fadePct=50;
@@ -857,22 +971,15 @@ filesInput.addEventListener('change',async e=>{
   filesInput.value='';
 });
 
-swapBtn.onclick=async()=>{
-  const keepZoom=zoom;
-  [imgA,imgB]=[imgB,imgA];
-  [blobA,blobB]=[blobB,blobA];
-  [metaA,metaB]=[metaB,metaA];
-  alignedCanvas=null;
-  resetManual(false);
-  zoom=keepZoom;
+swapBtn.onclick=()=>{
+  swappedView=!swappedView;
   draw();
-  await autoAlign(true);
-  zoom=keepZoom;
-  draw();
+  status(swappedView ? '表示順を入れ替えました' : '元の表示順に戻しました');
 };
 
 resetBtn.onclick=()=>{
   zoom=1;
+  swappedView=false;
   resetManual(false);
   splitPct=50;
   fadePct=50;
@@ -1284,7 +1391,6 @@ async function autoAlign(silent=false){
     }
 
     alignedCanvas=matToCanvas(cv,best.mat);
-    resetManual(false);
     draw();
 
     const label=best.kind==='affine'?'移動・回転・倍率':'パース補正';
@@ -1312,7 +1418,29 @@ async function autoAlign(silent=false){
   }
 }
 
-alignBtn.onclick=()=>autoAlign(false);
+alignBtn.onclick=async()=>{
+  const keepManual={
+    x:manualOffsetX,
+    y:manualOffsetY,
+    rotation:manualRotation,
+    scale:manualScaleFactor
+  };
+  const keepZoom=zoom;
+  const keepSwapped=swappedView;
+
+  await autoAlign(false);
+
+  manualOffsetX=keepManual.x;
+  manualOffsetY=keepManual.y;
+  manualRotation=keepManual.rotation;
+  manualScaleFactor=keepManual.scale;
+  zoom=keepZoom;
+  swappedView=keepSwapped;
+
+  updateManualOutputs();
+  draw();
+  status('再合致しました。手動調整は保持しています');
+};
 
 /* ---------- 比較履歴：端末内に最大20組 ---------- */
 const DB_NAME='image-compare-history-v2';
@@ -1524,6 +1652,41 @@ clearHistoryBtn.onclick=async()=>{
 
 refreshHistoryCount();
 
+
+/* ---------- iPhoneホーム画面用レイアウト補正 ----------
+   下部パネルを実画面の最下端に固定し、その実測高さだけ画像領域を空ける。
+   Safari/PWAのviewport差で下に黒い空洞ができるのを防ぐ。 */
+function updateViewportLayout(){
+  const vv=window.visualViewport;
+  const h=Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight);
+  const top=Math.round(vv?.offsetTop || 0);
+
+  // standaloneでもSafariでも「今見えている領域」をそのままアプリ領域にする
+  app.style.top=top+'px';
+  app.style.height=h+'px';
+
+  requestAnimationFrame(()=>{
+    const panelH=Math.ceil(bottomPanel.getBoundingClientRect().height);
+    app.style.setProperty('--panel-h',panelH+'px');
+    draw();
+  });
+}
+
+const layoutObserver=new ResizeObserver(()=>updateViewportLayout());
+layoutObserver.observe(bottomPanel);
+
+window.addEventListener('load',updateViewportLayout);
+window.addEventListener('resize',updateViewportLayout);
+window.addEventListener('orientationchange',()=>setTimeout(updateViewportLayout,120));
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',updateViewportLayout);
+  window.visualViewport.addEventListener('scroll',updateViewportLayout);
+}
+
+setTimeout(updateViewportLayout,0);
+setTimeout(updateViewportLayout,300);
+
 /* ---------- GitHub Pagesの最新版を自動反映 ---------- */
 const APP_VERSION=document.querySelector('meta[name="app-version"]')?.content||'0';
 let checking=false;
@@ -1568,8 +1731,7 @@ document.addEventListener('visibilitychange',()=>{
 
 setTimeout(checkForUpdate,1200);
 
-window.addEventListener('resize',()=>setTimeout(draw,60));
-window.visualViewport?.addEventListener('resize',()=>setTimeout(draw,60));
+
 </script>
 </body>
 </html>
