@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.4">
+<meta name="app-version" content="2026.10.05.6">
 <title>画像比較</title>
 
 <style>
@@ -41,41 +41,8 @@ button{color:inherit}
   overflow:hidden;
 }
 
-/* ホーム画面アプリ用の上部バー。画像には重ならない */
-#appbar{
-  flex:0 0 auto;
-  padding:
-    calc(var(--safe-t) + 4px)
-    calc(var(--safe-r) + 4px)
-    4px
-    calc(var(--safe-l) + 4px);
-  background:rgba(15,15,17,.98);
-  border-bottom:1px solid var(--line);
-}
-#buttonRow{
-  display:grid;
-  grid-template-columns:1.35fr 1fr 1fr 1fr 44px;
-  gap:4px;
-}
-button,.btn{
-  height:42px;min-width:0;
-  border:0;border-radius:9px;
-  display:flex;align-items:center;justify-content:center;
-  padding:0 8px;
-  background:#2b2b30;color:#fff;
-  font-size:12px;font-weight:750;
-  white-space:nowrap;
-}
-.btn.primary{background:#fff;color:#000}
-button:disabled{opacity:.36}
-input[type=file]{display:none}
-#status{
-  height:22px;margin-top:2px;
-  display:flex;align-items:center;
-  color:var(--muted);
-  font-size:11px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
+/* 上部には操作UIを置かない */
+#appbar{display:none!important}
 
 /* 画像表示域は残り全部。操作UIは一切重ならない */
 #stage{
@@ -123,22 +90,53 @@ input[type=file]{display:none}
   flex:0 0 auto;
   background:rgba(15,15,17,.99);
   border-top:1px solid var(--line);
+  padding:
+    3px
+    calc(4px + var(--safe-r))
+    max(2px,var(--safe-b))
+    calc(4px + var(--safe-l));
 }
+#status{
+  min-height:16px;
+  padding:0 2px 2px;
+  display:flex;align-items:center;
+  color:var(--muted);
+  font-size:10px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#buttonRow{
+  display:grid;
+  grid-template-columns:1.35fr 1fr 1fr 1fr 42px;
+  gap:4px;
+}
+button,.btn{
+  height:38px;min-width:0;
+  border:0;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 7px;
+  background:#2b2b30;color:#fff;
+  font-size:12px;font-weight:750;
+  white-space:nowrap;
+}
+.btn.primary{background:#fff;color:#000}
+button:disabled{opacity:.36}
+input[type=file]{display:none}
+
 #modeRow{
-  height:44px;
-  padding:4px 4px 0;
+  height:36px;
+  margin-top:4px;
   display:flex;gap:4px;align-items:center;
 }
 #modeSwitch{
   display:grid;
   grid-template-columns:1fr 1fr;
-  width:132px;height:36px;
+  width:122px;height:34px;
   padding:3px;
   background:#222226;
   border-radius:9px;
 }
 #modeSwitch button{
-  height:30px;padding:0 8px;
+  height:28px;padding:0 7px;
   background:transparent;
   border-radius:7px;
   font-size:12px;
@@ -146,7 +144,7 @@ input[type=file]{display:none}
 #modeSwitch button.active{background:#505057}
 #modeInfo{
   flex:1;min-width:0;
-  height:36px;
+  height:34px;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 10px;
   border-radius:9px;
@@ -155,21 +153,17 @@ input[type=file]{display:none}
   font-size:12px;
 }
 
-/* 一番下、画面端から端まで大きな操作バー */
+/* 指の移動量を減らすため、比較バーは短めに中央配置 */
 #sliderDock{
   width:100%;
-  height:calc(70px + var(--safe-b));
-  padding:
-    0
-    calc(var(--safe-r) + 10px)
-    var(--safe-b)
-    calc(var(--safe-l) + 10px);
-  display:flex;align-items:center;
-  background:#0b0b0d;
+  height:46px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;
 }
 #compareRange{
   appearance:none;-webkit-appearance:none;
-  width:100%;height:64px;
+  width:min(64vw,340px);
+  height:42px;
   margin:0;
   background:transparent;
   touch-action:pan-x;
@@ -180,9 +174,9 @@ input[type=file]{display:none}
 }
 #compareRange::-webkit-slider-thumb{
   appearance:none;-webkit-appearance:none;
-  width:38px;height:38px;
+  width:34px;height:34px;
   border-radius:50%;
-  margin-top:-14px;
+  margin-top:-12px;
   background:#fff;
   box-shadow:0 2px 10px rgba(0,0,0,.55);
 }
@@ -190,7 +184,7 @@ input[type=file]{display:none}
   height:10px;border-radius:999px;background:#5d5d64;
 }
 #compareRange::-moz-range-thumb{
-  width:38px;height:38px;border:0;border-radius:50%;background:#fff;
+  width:34px;height:34px;border:0;border-radius:50%;background:#fff;
 }
 
 /* 履歴 */
@@ -271,11 +265,15 @@ input[type=file]{display:none}
 #historyCount.show{display:inline-flex}
 
 @media (display-mode:standalone){
-  #appbar{background:#101012}
   #bottomPanel{background:#101012}
 }
 @media (orientation:landscape) and (max-height:560px){
-  #status{display:none}
+  #bottomPanel{padding-top:2px}
+  #buttonRow button,#buttonRow .btn{height:32px}
+  #modeRow{height:32px}
+  #sliderDock{height:38px}
+  #compareRange{height:36px;width:min(48vw,320px)}
+}
   #appbar{padding-bottom:3px}
   #buttonRow button,#buttonRow .btn{height:36px}
   #modeRow{height:38px}
@@ -287,23 +285,11 @@ input[type=file]{display:none}
 
 <body>
 <div id="app">
-  <header id="appbar">
-    <div id="buttonRow">
-      <label class="btn primary">
-        画像
-        <input id="files" type="file" accept="image/*">
-      </label>
-      <button id="swapBtn" disabled>入替</button>
-      <button id="alignBtn" disabled>再合致</button>
-      <button id="historyBtn">履歴 <span id="historyCount"></span></button>
-      <button id="resetBtn" disabled aria-label="表示リセット">↺</button>
-    </div>
-    <div id="status">準備完了</div>
-  </header>
+  
 
   <main id="stage">
     <div id="hint">
-      <div><strong>画像を2枚選択</strong>「画像」を2回押して1枚ずつ選択。2枚目の読み込み後に自動合致します</div>
+      <div><strong>画像を2枚選択</strong>「画像」から2枚まとめて選択できます。読み込み後に自動合致します</div>
     </div>
 
     <div class="layer"><canvas id="canvasA"></canvas></div>
@@ -312,6 +298,19 @@ input[type=file]{display:none}
   </main>
 
   <footer id="bottomPanel">
+    <div id="status">準備完了</div>
+
+    <div id="buttonRow">
+      <label class="btn primary">
+        画像
+        <input id="files" type="file" accept="image/*" multiple>
+      </label>
+      <button id="swapBtn" disabled>入替</button>
+      <button id="alignBtn" disabled>再合致</button>
+      <button id="historyBtn">履歴 <span id="historyCount"></span></button>
+      <button id="resetBtn" disabled aria-label="表示リセット">↺</button>
+    </div>
+
     <div id="modeRow">
       <div id="modeSwitch">
         <button id="splitBtn" class="active" disabled>バー</button>
@@ -578,45 +577,51 @@ async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
 }
 
 filesInput.addEventListener('change',async e=>{
-  const f=e.target.files?.[0];
-  if(!f)return;
+  const fs=[...(e.target.files||[])];
+  if(!fs.length)return;
 
   try{
-    if(!imgA){
-      imgA=await fileToImage(f);
-      blobA=f;
-      metaA=fmeta(f);
-      alignedCanvas=null;
-      zoom=1;
-      controlsReady();
-      draw();
-      status('1枚目を選択しました。もう一度「画像」で2枚目を選択');
-    }else if(!imgB){
-      imgB=await fileToImage(f);
-      blobB=f;
-      metaB=fmeta(f);
-      alignedCanvas=null;
-      zoom=1;
-      controlsReady();
-      draw();
-      if(!openingHistory)saveCurrentPair().catch(()=>{});
-      await autoAlign(true);
+    if(fs.length>=2){
+      const picked=fs.slice(0,2);
+      if(fs.length>2){
+        status('先頭の2枚だけを使用します');
+      }
+      await loadPair(
+        picked[0],picked[1],
+        fmeta(picked[0]),fmeta(picked[1]),
+        {save:true}
+      );
     }else{
-      // すでに2枚ある場合は、新しい1枚を画像1として開始し直す。
-      imgA=await fileToImage(f);
-      blobA=f;
-      metaA=fmeta(f);
-      imgB=null;
-      blobB=null;
-      metaB=null;
-      alignedCanvas=null;
-      zoom=1;
-      splitPct=50;
-      fadePct=50;
-      setMode('split');
-      controlsReady();
-      draw();
-      status('新しい1枚目を選択しました。もう一度「画像」で2枚目を選択');
+      const f=fs[0];
+
+      if(!imgA || (imgA&&imgB)){
+        imgA=await fileToImage(f);
+        blobA=f;
+        metaA=fmeta(f);
+
+        imgB=null;
+        blobB=null;
+        metaB=null;
+
+        alignedCanvas=null;
+        splitPct=50;
+        fadePct=50;
+        setMode('split');
+        controlsReady();
+        draw();
+        status('1枚目を選択しました。もう1枚選んでください');
+      }else{
+        imgB=await fileToImage(f);
+        blobB=f;
+        metaB=fmeta(f);
+
+        alignedCanvas=null;
+        controlsReady();
+        draw();
+
+        if(!openingHistory)saveCurrentPair().catch(()=>{});
+        await autoAlign(true);
+      }
     }
   }catch(err){
     console.error(err);
@@ -627,13 +632,16 @@ filesInput.addEventListener('change',async e=>{
 });
 
 swapBtn.onclick=async()=>{
+  const keepZoom=zoom;
   [imgA,imgB]=[imgB,imgA];
   [blobA,blobB]=[blobB,blobA];
   [metaA,metaB]=[metaB,metaA];
   alignedCanvas=null;
-  zoom=1;
+  zoom=keepZoom;
   draw();
   await autoAlign(true);
+  zoom=keepZoom;
+  draw();
 };
 
 resetBtn.onclick=()=>{
@@ -645,43 +653,69 @@ resetBtn.onclick=()=>{
   status('表示をリセットしました');
 };
 
-/* ---------- OpenCVを確実に読み込み ---------- */
+/* ---------- Diffchecker風の高精度位置合わせ ---------- */
+/*
+  方針:
+  1. 低照度でも特徴点が出るようにグレースケール + ヒストグラム平坦化
+  2. ORBを多めに抽出
+  3. KNN + ratio testで候補を絞る
+  4. まずRANSACのAffineで「移動・回転・拡大縮小」を推定
+  5. Affineの信頼度が低い時だけPerspective(Homography)を試す
+  6. 変形後の重なり具合を評価して、悪化する変換は採用しない
+
+  Diffcheckerの独自実装そのものではないが、同じく
+  「共通ディテールを探して offset / rotation / scale を解く」方式。
+*/
 let cvPromise=null;
 
 function ensureOpenCV(){
   if(cvPromise)return cvPromise;
 
   cvPromise=new Promise((resolve,reject)=>{
-    const finish=()=>{
+    let settled=false;
+
+    const done=()=>{
+      if(settled)return;
       try{
         if(window.cv && typeof window.cv.then==='function'){
-          window.cv.then(v=>resolve(v)).catch(reject);
+          window.cv.then(v=>{
+            if(settled)return;
+            settled=true;
+            resolve(v);
+          }).catch(reject);
         }else if(window.cv && window.cv.Mat){
+          settled=true;
           resolve(window.cv);
         }
-      }catch(e){reject(e)}
+      }catch(e){
+        reject(e);
+      }
     };
 
     if(window.cv){
-      finish();
+      done();
       return;
     }
 
     window.Module=window.Module||{};
-    window.Module.onRuntimeInitialized=finish;
+    const oldReady=window.Module.onRuntimeInitialized;
+    window.Module.onRuntimeInitialized=()=>{
+      try{ oldReady?.(); }catch(_){}
+      done();
+    };
 
     const s=document.createElement('script');
-    s.src='https://docs.opencv.org/4.x/opencv.js';
+    s.src='https://docs.opencv.org/4.10.0/opencv.js';
     s.async=true;
-    s.onload=()=>{
-      if(window.cv && window.cv.Mat)finish();
-    };
-    s.onerror=()=>reject(new Error('OpenCVの読み込みに失敗'));
+    s.onload=()=>setTimeout(done,0);
+    s.onerror=()=>reject(new Error('OpenCVの読み込みに失敗しました'));
     document.head.appendChild(s);
 
     setTimeout(()=>{
-      if(!window.cv)reject(new Error('OpenCV読み込みタイムアウト'));
-    },20000);
+      if(!settled && !window.cv){
+        reject(new Error('OpenCVの読み込みがタイムアウトしました'));
+      }
+    },25000);
   });
 
   return cvPromise;
@@ -695,17 +729,230 @@ function imageToMat(cv,im){
   return cv.imread(c);
 }
 
-/* ---------- 高精度の自動合致 ---------- */
+function prepGray(cv,src,maxSide=1400){
+  const scale=Math.min(1,maxSide/Math.max(src.cols,src.rows));
+  const small=new cv.Mat();
+  cv.resize(src,small,new cv.Size(0,0),scale,scale,cv.INTER_AREA);
+
+  const gray=new cv.Mat();
+  cv.cvtColor(small,gray,cv.COLOR_RGBA2GRAY);
+
+  const eq=new cv.Mat();
+  cv.equalizeHist(gray,eq);
+  gray.delete();
+
+  return {mat:eq,scale,small};
+}
+
+function createOrb(cv){
+  // OpenCV.jsのビルド差に備えて、完全引数 → 簡易引数 → デフォルトの順に試す
+  try{
+    return new cv.ORB(7000,1.2,8,31,0,2,cv.ORB_HARRIS_SCORE ?? 0,31,7);
+  }catch(_){
+    try{return new cv.ORB(7000)}
+    catch(__){return new cv.ORB()}
+  }
+}
+
+function collectGoodMatches(cv,kpA,kpB,desA,desB){
+  const matcher=new cv.BFMatcher(cv.NORM_HAMMING,false);
+  const fwd=new cv.DMatchVectorVector();
+  matcher.knnMatch(desB,desA,fwd,2);
+
+  const good=[];
+  for(let i=0;i<fwd.size();i++){
+    const pair=fwd.get(i);
+    if(pair.size()>=2){
+      const m0=pair.get(0);
+      const m1=pair.get(1);
+      // Diffcheckerのように「共通部分」を優先するため、少し緩めに拾ってRANSACで落とす
+      if(m0.distance < 0.80*m1.distance){
+        good.push({
+          queryIdx:m0.queryIdx,
+          trainIdx:m0.trainIdx,
+          distance:m0.distance
+        });
+      }
+    }
+    pair.delete();
+  }
+
+  fwd.delete();
+  matcher.delete();
+
+  // 良い順に上限を設け、RANSACを安定させる
+  good.sort((a,b)=>a.distance-b.distance);
+  return good.slice(0,1800);
+}
+
+function matchPointsToFullRes(kpA,kpB,matches,scaleA,scaleB,wA,hA){
+  const all=[];
+  const outer=[];
+
+  for(const m of matches){
+    const pb=kpB.get(m.queryIdx).pt;
+    const pa=kpA.get(m.trainIdx).pt;
+
+    const ax=pa.x/scaleA, ay=pa.y/scaleA;
+    const bx=pb.x/scaleB, by=pb.y/scaleB;
+
+    const item={ax,ay,bx,by};
+
+    all.push(item);
+
+    // 人物編集などで中央が変わっても背景で合わせやすいよう、
+    // 外周側の特徴点も別候補として保持する
+    const nx=Math.abs(ax-wA/2)/(wA/2);
+    const ny=Math.abs(ay-hA/2)/(hA/2);
+    if(nx>0.42 || ny>0.42){
+      outer.push(item);
+    }
+  }
+
+  // 外周だけで十分な点が取れているなら優先
+  return outer.length>=18 ? outer : all;
+}
+
+function pointsToMats(cv,pts){
+  const src=[],dst=[];
+  for(const p of pts){
+    src.push(p.bx,p.by);
+    dst.push(p.ax,p.ay);
+  }
+  return {
+    srcPts:cv.matFromArray(pts.length,1,cv.CV_32FC2,src),
+    dstPts:cv.matFromArray(pts.length,1,cv.CV_32FC2,dst)
+  };
+}
+
+function countInliers(mask){
+  if(!mask || mask.empty())return 0;
+  let n=0;
+  for(let i=0;i<mask.rows;i++){
+    try{
+      if(mask.ucharPtr(i,0)[0])n++;
+    }catch(_){}
+  }
+  return n;
+}
+
+function estimateAffineCandidate(cv,srcPts,dstPts){
+  const inliers=new cv.Mat();
+  let M=null;
+
+  try{
+    // 新しめのOpenCV.js
+    M=cv.estimateAffine2D(
+      srcPts,dstPts,inliers,
+      cv.RANSAC,3.0,3000,0.995,10
+    );
+  }catch(_){
+    try{
+      // ビルド差に対応
+      M=cv.estimateAffine2D(srcPts,dstPts,inliers,cv.RANSAC);
+    }catch(__){}
+  }
+
+  const n=countInliers(inliers);
+  return {M,inliers,count:n};
+}
+
+function estimateHomographyCandidate(cv,srcPts,dstPts){
+  const inliers=new cv.Mat();
+  let H=null;
+
+  try{
+    H=cv.findHomography(srcPts,dstPts,cv.RANSAC,4.0,inliers);
+  }catch(_){
+    try{
+      H=cv.findHomography(srcPts,dstPts,cv.RANSAC,4.0);
+    }catch(__){}
+  }
+
+  const n=countInliers(inliers);
+  return {H,inliers,count:n};
+}
+
+function warpWithAffine(cv,src,M,w,h){
+  const out=new cv.Mat();
+  cv.warpAffine(
+    src,out,M,new cv.Size(w,h),
+    cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar(0,0,0,0)
+  );
+  return out;
+}
+
+function warpWithHomography(cv,src,H,w,h){
+  const out=new cv.Mat();
+  cv.warpPerspective(
+    src,out,H,new cv.Size(w,h),
+    cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar(0,0,0,0)
+  );
+  return out;
+}
+
+function alignmentScore(cv,reference,warped){
+  // 透明領域を除いた「エッジの一致度」を0〜1で評価
+  let refGray,warpGray,refEdge,warpEdge,alpha,mask,diff;
+
+  try{
+    refGray=new cv.Mat();
+    warpGray=new cv.Mat();
+    cv.cvtColor(reference,refGray,cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(warped,warpGray,cv.COLOR_RGBA2GRAY);
+
+    // サイズを小さくして評価を軽量化
+    const maxSide=700;
+    const s=Math.min(1,maxSide/Math.max(reference.cols,reference.rows));
+    const rr=new cv.Mat(),ww=new cv.Mat();
+    cv.resize(refGray,rr,new cv.Size(0,0),s,s,cv.INTER_AREA);
+    cv.resize(warpGray,ww,new cv.Size(0,0),s,s,cv.INTER_AREA);
+
+    refEdge=new cv.Mat();
+    warpEdge=new cv.Mat();
+    cv.Canny(rr,refEdge,55,130);
+    cv.Canny(ww,warpEdge,55,130);
+
+    diff=new cv.Mat();
+    cv.absdiff(refEdge,warpEdge,diff);
+
+    const meanDiff=cv.mean(diff)[0]/255;
+
+    rr.delete();ww.delete();
+
+    // 1が良い、0が悪い
+    return Math.max(0,1-meanDiff);
+  }catch(_){
+    return 0;
+  }finally{
+    for(const x of [refGray,warpGray,refEdge,warpEdge,alpha,mask,diff]){
+      try{if(x&&x.delete)x.delete()}catch(_){}
+    }
+  }
+}
+
+function matToCanvas(cv,mat){
+  const c=document.createElement('canvas');
+  c.width=mat.cols;
+  c.height=mat.rows;
+  cv.imshow(c,mat);
+  return c;
+}
+
 async function autoAlign(silent=false){
   if(aligning||!imgA||!imgB)return;
 
   aligning=true;
   alignBtn.disabled=true;
-  status('自動で位置合わせ中…');
+  status('共通部分を探して自動合致中…');
 
   let cv;
-  let srcA,srcB,smallA,smallB,gA,gB,kpA,kpB,desA,desB,mask,orb,matcher,matches;
-  let srcPts,dstPts,H,warped,inlierMask;
+  let srcA,srcB;
+  let prepA,prepB;
+  let kpA,kpB,desA,desB,mask,orb;
+  let srcPts,dstPts;
+  let affine,inliersA,homography,inliersH;
+  let warpedA=null,warpedH=null;
 
   try{
     cv=await ensureOpenCV();
@@ -713,115 +960,124 @@ async function autoAlign(silent=false){
     srcA=imageToMat(cv,imgA);
     srcB=imageToMat(cv,imgB);
 
-    const maxSide=1200;
-    const sA=Math.min(1,maxSide/Math.max(srcA.cols,srcA.rows));
-    const sB=Math.min(1,maxSide/Math.max(srcB.cols,srcB.rows));
-
-    smallA=new cv.Mat();
-    smallB=new cv.Mat();
-    cv.resize(srcA,smallA,new cv.Size(0,0),sA,sA,cv.INTER_AREA);
-    cv.resize(srcB,smallB,new cv.Size(0,0),sB,sB,cv.INTER_AREA);
-
-    gA=new cv.Mat();
-    gB=new cv.Mat();
-    cv.cvtColor(smallA,gA,cv.COLOR_RGBA2GRAY);
-    cv.cvtColor(smallB,gB,cv.COLOR_RGBA2GRAY);
+    prepA=prepGray(cv,srcA);
+    prepB=prepGray(cv,srcB);
 
     kpA=new cv.KeyPointVector();
     kpB=new cv.KeyPointVector();
     desA=new cv.Mat();
     desB=new cv.Mat();
     mask=new cv.Mat();
+    orb=createOrb(cv);
 
-    orb=new cv.ORB(5000);
-    orb.detectAndCompute(gA,mask,kpA,desA);
-    orb.detectAndCompute(gB,mask,kpB,desB);
+    orb.detectAndCompute(prepA.mat,mask,kpA,desA);
+    orb.detectAndCompute(prepB.mat,mask,kpB,desB);
 
     if(desA.empty()||desB.empty()){
-      throw new Error('特徴点不足');
+      throw new Error('共通の特徴点を検出できませんでした');
     }
 
-    matcher=new cv.BFMatcher(cv.NORM_HAMMING,false);
-    matches=new cv.DMatchVectorVector();
-    matcher.knnMatch(desB,desA,matches,2);
+    const matches=collectGoodMatches(cv,kpA,kpB,desA,desB);
 
-    const good=[];
-    for(let i=0;i<matches.size();i++){
-      const m=matches.get(i);
-      if(m.size()>=2){
-        const m0=m.get(0);
-        const m1=m.get(1);
-        if(m0.distance<0.78*m1.distance){
-          good.push(m0);
-        }
-      }
-      m.delete();
+    if(matches.length<10){
+      throw new Error('共通部分が少なすぎます');
     }
 
-    if(good.length<10){
-      throw new Error('一致点不足');
-    }
-
-    const sp=[],dp=[];
-    for(const m of good){
-      const pB=kpB.get(m.queryIdx).pt;
-      const pA=kpA.get(m.trainIdx).pt;
-
-      sp.push(pB.x/sB,pB.y/sB);
-      dp.push(pA.x/sA,pA.y/sA);
-    }
-
-    srcPts=cv.matFromArray(good.length,1,cv.CV_32FC2,sp);
-    dstPts=cv.matFromArray(good.length,1,cv.CV_32FC2,dp);
-    inlierMask=new cv.Mat();
-
-    H=cv.findHomography(srcPts,dstPts,cv.RANSAC,4,inlierMask);
-
-    if(H.empty()){
-      throw new Error('変換計算失敗');
-    }
-
-    let inliers=0;
-    for(let i=0;i<inlierMask.rows;i++){
-      if(inlierMask.ucharPtr(i,0)[0])inliers++;
-    }
-
-    if(inliers<8){
-      throw new Error('信頼できる一致点不足');
-    }
-
-    warped=new cv.Mat();
-    cv.warpPerspective(
-      srcB,
-      warped,
-      H,
-      new cv.Size(srcA.cols,srcA.rows),
-      cv.INTER_LINEAR,
-      cv.BORDER_CONSTANT,
-      new cv.Scalar(0,0,0,0)
+    const pts=matchPointsToFullRes(
+      kpA,kpB,matches,
+      prepA.scale,prepB.scale,
+      srcA.cols,srcA.rows
     );
 
-    const out=document.createElement('canvas');
-    out.width=warped.cols;
-    out.height=warped.rows;
-    cv.imshow(out,warped);
+    if(pts.length<8){
+      throw new Error('位置合わせに必要な一致点が不足しています');
+    }
 
-    alignedCanvas=out;
+    const mats=pointsToMats(cv,pts);
+    srcPts=mats.srcPts;
+    dstPts=mats.dstPts;
+
+    // まずDiffcheckerの基本挙動に近い「移動・回転・拡大縮小」を優先
+    const ac=estimateAffineCandidate(cv,srcPts,dstPts);
+    affine=ac.M;
+    inliersA=ac.inliers;
+
+    let best=null;
+
+    if(affine && !affine.empty() && ac.count>=8){
+      warpedA=warpWithAffine(cv,srcB,affine,srcA.cols,srcA.rows);
+      const score=alignmentScore(cv,srcA,warpedA);
+      best={
+        kind:'affine',
+        mat:warpedA,
+        inliers:ac.count,
+        ratio:ac.count/pts.length,
+        score
+      };
+    }
+
+    // Affineが弱い時だけパース補正候補も計算
+    if(!best || best.ratio<0.36 || best.score<0.72){
+      const hc=estimateHomographyCandidate(cv,srcPts,dstPts);
+      homography=hc.H;
+      inliersH=hc.inliers;
+
+      if(homography && !homography.empty() && hc.count>=8){
+        warpedH=warpWithHomography(cv,srcB,homography,srcA.cols,srcA.rows);
+        const score=alignmentScore(cv,srcA,warpedH);
+        const candidate={
+          kind:'perspective',
+          mat:warpedH,
+          inliers:hc.count,
+          ratio:hc.count/pts.length,
+          score
+        };
+
+        // Perspectiveは暴れやすいので、明確に良い時だけ採用
+        if(
+          !best ||
+          (
+            candidate.ratio>=0.28 &&
+            candidate.score>best.score+0.015
+          )
+        ){
+          best=candidate;
+        }
+      }
+    }
+
+    if(!best){
+      throw new Error('信頼できる変換を求められませんでした');
+    }
+
+    // 変換の信頼度が低すぎる時は、無理に画像を歪めない
+    if(best.inliers<8 || best.ratio<0.18){
+      throw new Error('一致の信頼度が低すぎます');
+    }
+
+    alignedCanvas=matToCanvas(cv,best.mat);
     draw();
 
-    status(`自動合致完了（一致点 ${inliers}）`);
+    const label=best.kind==='affine'?'移動・回転・倍率':'パース補正';
+    status(`自動合致完了：${label} / 一致 ${best.inliers}点`);
   }catch(err){
     console.error(err);
     alignedCanvas=null;
     draw();
-    status('自動合致できませんでした。元画像との差が大きい可能性があります');
+    status('自動合致できませんでした。画像の共通部分が少ない場合は手動調整が必要です');
   }finally{
     for(const x of [
-      srcA,srcB,smallA,smallB,gA,gB,kpA,kpB,desA,desB,mask,
-      orb,matcher,matches,srcPts,dstPts,H,warped,inlierMask
+      srcA,srcB,
+      prepA?.mat,prepA?.small,
+      prepB?.mat,prepB?.small,
+      kpA,kpB,desA,desB,mask,orb,
+      srcPts,dstPts,
+      affine,inliersA,homography,inliersH,
+      warpedA,warpedH
     ]){
       try{if(x&&x.delete)x.delete()}catch(_){}
     }
+
     aligning=false;
     controlsReady();
   }
