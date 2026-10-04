@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.12">
+<meta name="app-version" content="2026.10.05.13">
 <title>画像比較</title>
 
 <style>
@@ -35,10 +35,7 @@ button,input{font:inherit}
 button{color:inherit}
 #app{
   position:fixed;
-  left:0;
-  top:0;
-  width:100%;
-  height:100%;
+  inset:0;
   background:#000;
   overflow:hidden;
 }
@@ -48,7 +45,7 @@ button{color:inherit}
 
 /* 画像表示域は残り全部。操作UIは一切重ならない */
 #stage{
-  position:absolute;
+  position:fixed;
   left:0;
   right:0;
   top:0;
@@ -92,13 +89,15 @@ button{color:inherit}
 
 /* 下部操作部も通常レイアウト。余白を作らず画像に重ならない */
 #bottomPanel{
-  position:absolute;
+  position:fixed;
+  z-index:40;
   left:0;
   right:0;
   bottom:0;
+  margin:0;
   height:auto;
   min-height:0;
-  background:rgba(15,15,17,.99);
+  background:#101012;
   border-top:1px solid var(--line);
   padding:
     2px
@@ -402,6 +401,7 @@ input[type=file]{display:none}
 #historyCount.show{display:inline-flex}
 
 @media (display-mode:standalone){
+  html,body,#app{background:#000}
   #bottomPanel{background:#101012}
 }
 @media (orientation:landscape) and (max-height:560px){
@@ -1752,20 +1752,14 @@ clearHistoryBtn.onclick=async()=>{
 refreshHistoryCount();
 
 
-/* ---------- iPhoneホーム画面用レイアウト補正 ----------
-   下部パネルを実画面の最下端に固定し、その実測高さだけ画像領域を空ける。
-   Safari/PWAのviewport差で下に黒い空洞ができるのを防ぐ。 */
+/* ---------- 下部パネル実測 ----------
+   パネル自体は viewport の bottom:0 に直接固定する。
+   visualViewport.height ではアプリ全体を縮めない。
+   iPhoneホーム画面で下に空洞が残る原因をここで排除する。 */
 function updateViewportLayout(){
-  const vv=window.visualViewport;
-  const h=Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight);
-  const top=Math.round(vv?.offsetTop || 0);
-
-  // standaloneでもSafariでも「今見えている領域」をそのままアプリ領域にする
-  app.style.top=top+'px';
-  app.style.height=h+'px';
-
   requestAnimationFrame(()=>{
     const panelH=Math.ceil(bottomPanel.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--panel-h',panelH+'px');
     app.style.setProperty('--panel-h',panelH+'px');
     draw();
   });
@@ -1778,13 +1772,8 @@ window.addEventListener('load',updateViewportLayout);
 window.addEventListener('resize',updateViewportLayout);
 window.addEventListener('orientationchange',()=>setTimeout(updateViewportLayout,120));
 
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',updateViewportLayout);
-  window.visualViewport.addEventListener('scroll',updateViewportLayout);
-}
-
 setTimeout(updateViewportLayout,0);
-setTimeout(updateViewportLayout,300);
+setTimeout(updateViewportLayout,250);
 
 /* ---------- GitHub Pagesの最新版を自動反映 ---------- */
 const APP_VERSION=document.querySelector('meta[name="app-version"]')?.content||'0';
