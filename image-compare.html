@@ -4,9 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="画像比較">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="app-version" content="2026.10.05.2">
+<meta name="app-version" content="2026.10.05.4">
 <title>画像比較</title>
 
 <style>
@@ -15,236 +17,316 @@
   --safe-r:env(safe-area-inset-right,0px);
   --safe-b:env(safe-area-inset-bottom,0px);
   --safe-l:env(safe-area-inset-left,0px);
-  --panel:rgba(17,17,19,.88);
+  --bg:#000;
+  --panel:#121214;
+  --panel2:#222226;
+  --line:rgba(255,255,255,.12);
   --text:#fff;
-  --muted:rgba(255,255,255,.66);
+  --muted:rgba(255,255,255,.62);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{
   margin:0;width:100%;height:100%;
-  overflow:hidden;background:#000;color:var(--text);
+  overflow:hidden;background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
   overscroll-behavior:none;
 }
 button,input{font:inherit}
 button{color:inherit}
-#app{position:fixed;inset:0;width:100vw;height:100dvh;background:#000;overflow:hidden}
-#stage{
-  position:absolute;inset:0;
-  overflow:hidden;background:#000;
-  user-select:none;-webkit-user-select:none;
+#app{
+  position:fixed;inset:0;
+  width:100vw;height:100dvh;
+  display:flex;flex-direction:column;
+  background:#000;
+  overflow:hidden;
 }
-.layer{position:absolute;inset:0;pointer-events:none}
-.layer canvas{position:absolute;inset:0;width:100%;height:100%}
-#clipLayer{overflow:hidden}
 
-#hint{
-  position:absolute;inset:0;display:grid;place-items:center;
-  padding:28px 24px calc(115px + var(--safe-b));
-  text-align:center;color:#909096;font-size:14px;line-height:1.55;
-  pointer-events:none;
+/* ホーム画面アプリ用の上部バー。画像には重ならない */
+#appbar{
+  flex:0 0 auto;
+  padding:
+    calc(var(--safe-t) + 4px)
+    calc(var(--safe-r) + 4px)
+    4px
+    calc(var(--safe-l) + 4px);
+  background:rgba(15,15,17,.98);
+  border-bottom:1px solid var(--line);
 }
-#hint strong{display:block;color:#fff;font-size:18px;margin-bottom:5px}
-.hidden{display:none!important}
-
-/* 比較バー */
-#divider{
-  position:absolute;top:0;bottom:0;left:50%;z-index:12;
-  width:2px;background:#fff;
-  box-shadow:0 0 0 1px rgba(0,0,0,.4),0 0 14px rgba(0,0,0,.85);
+#buttonRow{
+  display:grid;
+  grid-template-columns:1.35fr 1fr 1fr 1fr 44px;
+  gap:4px;
 }
-#dividerHit{
-  position:absolute;top:0;bottom:0;left:50%;
-  width:70px;transform:translateX(-50%);
-  touch-action:none;cursor:ew-resize;
+button,.btn{
+  height:42px;min-width:0;
+  border:0;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 8px;
+  background:#2b2b30;color:#fff;
+  font-size:12px;font-weight:750;
+  white-space:nowrap;
 }
-#dividerHandle{
-  position:absolute;left:50%;top:50%;
-  transform:translate(-50%,-50%);
-  width:56px;height:56px;border-radius:50%;
-  display:grid;place-items:center;
-  background:rgba(0,0,0,.78);
-  border:1px solid rgba(255,255,255,.72);
-  box-shadow:0 6px 22px rgba(0,0,0,.38);
-  font-size:24px;font-weight:800;
-  pointer-events:none;
-}
-#dividerHandle::before{content:"↔"}
-
-/* 上部ステータス */
+.btn.primary{background:#fff;color:#000}
+button:disabled{opacity:.36}
+input[type=file]{display:none}
 #status{
-  position:absolute;z-index:30;
-  top:calc(4px + var(--safe-t));
-  left:calc(4px + var(--safe-l));
-  max-width:calc(100vw - 8px - var(--safe-l) - var(--safe-r));
-  min-height:32px;padding:7px 10px;border-radius:10px;
-  background:rgba(0,0,0,.62);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  color:#fff;font-size:12px;
+  height:22px;margin-top:2px;
+  display:flex;align-items:center;
+  color:var(--muted);
+  font-size:11px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
-/* 画面端ギリギリの操作部 */
-#controls{
-  position:absolute;z-index:40;
-  left:calc(3px + var(--safe-l));
-  right:calc(3px + var(--safe-r));
-  bottom:calc(3px + var(--safe-b));
-  padding:5px;
-  border-radius:14px;
-  background:var(--panel);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  box-shadow:0 8px 28px rgba(0,0,0,.38);
+/* 画像表示域は残り全部。操作UIは一切重ならない */
+#stage{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  background:#000;
+  touch-action:none;
 }
-.row{display:flex;gap:4px;align-items:center}
-.row+.row{margin-top:4px}
-button,.btn{
-  min-width:0;height:43px;padding:0 9px;
-  border:0;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  background:#2c2c30;color:#fff;
-  font-size:13px;font-weight:750;white-space:nowrap;
+.layer{
+  position:absolute;inset:0;
+  pointer-events:none;
 }
-button:disabled{opacity:.36}
-.primary{background:#fff;color:#000}
-.grow{flex:1}
-input[type=file]{display:none}
+.layer canvas{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+}
+#clipLayer{overflow:hidden}
+#dividerLine{
+  position:absolute;
+  top:0;bottom:0;left:50%;
+  width:2px;
+  background:#fff;
+  z-index:5;
+  pointer-events:none;
+  box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 12px rgba(0,0,0,.75);
+}
+#hint{
+  position:absolute;inset:0;
+  display:grid;place-items:center;
+  padding:24px;
+  text-align:center;
+  color:#8f8f95;
+  font-size:14px;line-height:1.55;
+  pointer-events:none;
+}
+#hint strong{
+  display:block;color:#fff;font-size:18px;margin-bottom:5px;
+}
+.hidden{display:none!important}
 
-#modeSwitch{
-  display:grid;grid-template-columns:1fr 1fr;
-  width:124px;height:40px;padding:3px;
-  background:#202024;border-radius:10px;
+/* 下部操作部も通常レイアウト。余白を作らず画像に重ならない */
+#bottomPanel{
   flex:0 0 auto;
+  background:rgba(15,15,17,.99);
+  border-top:1px solid var(--line);
+}
+#modeRow{
+  height:44px;
+  padding:4px 4px 0;
+  display:flex;gap:4px;align-items:center;
+}
+#modeSwitch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  width:132px;height:36px;
+  padding:3px;
+  background:#222226;
+  border-radius:9px;
 }
 #modeSwitch button{
-  height:34px;padding:0 7px;background:transparent;
-  border-radius:8px;font-size:12px;
+  height:30px;padding:0 8px;
+  background:transparent;
+  border-radius:7px;
+  font-size:12px;
 }
-#modeSwitch button.active{background:#49494f}
+#modeSwitch button.active{background:#505057}
+#modeInfo{
+  flex:1;min-width:0;
+  height:36px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;
+  border-radius:9px;
+  background:#222226;
+  color:var(--muted);
+  font-size:12px;
+}
 
-#rangeBlock{
-  height:40px;flex:1;min-width:0;
-  display:flex;align-items:center;gap:6px;
-  padding:0 8px;border-radius:10px;background:#202024;
+/* 一番下、画面端から端まで大きな操作バー */
+#sliderDock{
+  width:100%;
+  height:calc(70px + var(--safe-b));
+  padding:
+    0
+    calc(var(--safe-r) + 10px)
+    var(--safe-b)
+    calc(var(--safe-l) + 10px);
+  display:flex;align-items:center;
+  background:#0b0b0d;
 }
-#rangeLabel,#rangeValue{font-size:11px;color:var(--muted);white-space:nowrap}
-#rangeValue{width:34px;text-align:right}
-input[type=range]{
+#compareRange{
   appearance:none;-webkit-appearance:none;
-  width:100%;height:34px;background:transparent;margin:0;
+  width:100%;height:64px;
+  margin:0;
+  background:transparent;
+  touch-action:pan-x;
 }
-input[type=range]::-webkit-slider-runnable-track{
-  height:6px;border-radius:99px;background:#606066;
+#compareRange::-webkit-slider-runnable-track{
+  height:10px;border-radius:999px;
+  background:#5d5d64;
 }
-input[type=range]::-webkit-slider-thumb{
+#compareRange::-webkit-slider-thumb{
   appearance:none;-webkit-appearance:none;
-  width:28px;height:28px;border-radius:50%;
-  background:#fff;margin-top:-11px;box-shadow:0 2px 8px rgba(0,0,0,.45);
+  width:38px;height:38px;
+  border-radius:50%;
+  margin-top:-14px;
+  background:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.55);
 }
-input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:#606066}
-input[type=range]::-moz-range-thumb{width:28px;height:28px;border:0;border-radius:50%;background:#fff}
+#compareRange::-moz-range-track{
+  height:10px;border-radius:999px;background:#5d5d64;
+}
+#compareRange::-moz-range-thumb{
+  width:38px;height:38px;border:0;border-radius:50%;background:#fff;
+}
 
 /* 履歴 */
 #historyModal{
-  position:absolute;inset:0;z-index:80;display:none;align-items:flex-end;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+  position:fixed;inset:0;z-index:50;
+  display:none;align-items:flex-end;
+  background:rgba(0,0,0,.58);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 #historyModal.open{display:flex}
 #historySheet{
-  width:100%;max-height:min(78dvh,760px);
-  padding:8px 8px calc(8px + var(--safe-b));
-  border-radius:20px 20px 0 0;background:#171719;
-  border-top:1px solid rgba(255,255,255,.12);
+  width:100%;
+  max-height:78dvh;
+  padding:
+    8px
+    calc(8px + var(--safe-r))
+    calc(8px + var(--safe-b))
+    calc(8px + var(--safe-l));
+  border-radius:20px 20px 0 0;
+  background:#171719;
+  border-top:1px solid rgba(255,255,255,.13);
   overflow:hidden;
 }
-#historyHeader{display:flex;align-items:center;gap:6px;min-height:46px;padding-bottom:6px}
+#historyHeader{
+  display:flex;align-items:center;gap:6px;
+  min-height:46px;padding-bottom:6px;
+}
 #historyHeader strong{font-size:16px}
 #historyHeader .spacer{flex:1}
 #historyHeader button{height:36px;padding:0 10px;font-size:12px}
 #historyList{
-  max-height:calc(min(78dvh,760px) - 58px);
+  max-height:calc(78dvh - 58px);
   overflow:auto;-webkit-overflow-scrolling:touch;
 }
-.historyEmpty{padding:42px 20px;text-align:center;color:var(--muted);font-size:14px;line-height:1.7}
-.historyItem{
-  display:grid;grid-template-columns:94px 1fr auto;gap:9px;align-items:center;
-  padding:8px 3px;border-top:1px solid rgba(255,255,255,.08);
+.historyEmpty{
+  padding:42px 20px;text-align:center;
+  color:var(--muted);font-size:14px;line-height:1.7;
 }
-.historyThumbs{position:relative;width:94px;height:68px;border-radius:9px;overflow:hidden;background:#0b0b0c}
+.historyItem{
+  display:grid;
+  grid-template-columns:94px 1fr auto;
+  gap:9px;align-items:center;
+  padding:8px 3px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.historyThumbs{
+  position:relative;width:94px;height:68px;
+  border-radius:9px;overflow:hidden;background:#0b0b0c;
+}
 .historyThumbs img{
-  position:absolute;width:62px;height:62px;object-fit:cover;border-radius:7px;
-  border:1px solid rgba(255,255,255,.17);background:#000;
+  position:absolute;
+  width:62px;height:62px;
+  object-fit:cover;border-radius:7px;
+  border:1px solid rgba(255,255,255,.17);
+  background:#000;
 }
 .historyThumbs img:first-child{left:0;top:3px}
 .historyThumbs img:last-child{right:0;top:3px}
 .historyMeta{min-width:0}
 .historyMeta .date{font-size:13px;font-weight:750;margin-bottom:4px}
 .historyMeta .names{
-  font-size:11px;line-height:1.35;color:var(--muted);
+  color:var(--muted);
+  font-size:11px;line-height:1.35;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .historyActions{display:flex;flex-direction:column;gap:5px}
 .historyActions button{width:52px;height:32px;padding:0;font-size:11px}
 .danger{background:#492326!important}
 #historyCount{
-  display:none;min-width:17px;height:17px;margin-left:2px;padding:0 4px;
-  border-radius:99px;background:#fff;color:#000;font-size:9px;font-weight:800;
+  display:none;
+  min-width:17px;height:17px;
+  margin-left:2px;padding:0 4px;
+  border-radius:99px;
+  background:#fff;color:#000;
+  font-size:9px;font-weight:800;
   align-items:center;justify-content:center;
 }
 #historyCount.show{display:inline-flex}
 
+@media (display-mode:standalone){
+  #appbar{background:#101012}
+  #bottomPanel{background:#101012}
+}
 @media (orientation:landscape) and (max-height:560px){
-  #controls{
-    left:auto;right:calc(3px + var(--safe-r));bottom:calc(3px + var(--safe-b));
-    width:min(500px,60vw);
-  }
+  #status{display:none}
+  #appbar{padding-bottom:3px}
+  #buttonRow button,#buttonRow .btn{height:36px}
+  #modeRow{height:38px}
+  #sliderDock{height:calc(58px + var(--safe-b))}
+  #compareRange{height:54px}
 }
 </style>
 </head>
 
 <body>
 <div id="app">
-  <div id="stage">
-    <div id="hint"><div><strong>2枚の画像を選択</strong>読み込み後、自動で位置合わせします</div></div>
+  <header id="appbar">
+    <div id="buttonRow">
+      <label class="btn primary">
+        画像
+        <input id="files" type="file" accept="image/*">
+      </label>
+      <button id="swapBtn" disabled>入替</button>
+      <button id="alignBtn" disabled>再合致</button>
+      <button id="historyBtn">履歴 <span id="historyCount"></span></button>
+      <button id="resetBtn" disabled aria-label="表示リセット">↺</button>
+    </div>
+    <div id="status">準備完了</div>
+  </header>
+
+  <main id="stage">
+    <div id="hint">
+      <div><strong>画像を2枚選択</strong>「画像」を2回押して1枚ずつ選択。2枚目の読み込み後に自動合致します</div>
+    </div>
+
     <div class="layer"><canvas id="canvasA"></canvas></div>
     <div class="layer" id="clipLayer"><canvas id="canvasB"></canvas></div>
+    <div id="dividerLine" class="hidden"></div>
+  </main>
 
-    <div id="divider" class="hidden">
-      <div id="dividerHit"></div>
-      <div id="dividerHandle"></div>
-    </div>
-  </div>
-
-  <div id="status">準備完了</div>
-
-  <div id="controls">
-    <div class="row">
-      <label class="btn primary grow">
-        画像
-        <input id="files" type="file" accept="image/*" multiple>
-      </label>
-      <button id="swapBtn" class="grow" disabled>入替</button>
-      <button id="alignBtn" class="grow" disabled>再合致</button>
-      <button id="historyBtn" class="grow">履歴 <span id="historyCount"></span></button>
-      <button id="fullBtn" aria-label="全画面">⛶</button>
-    </div>
-
-    <div class="row">
+  <footer id="bottomPanel">
+    <div id="modeRow">
       <div id="modeSwitch">
         <button id="splitBtn" class="active" disabled>バー</button>
         <button id="fadeBtn" disabled>フェード</button>
       </div>
-      <div id="rangeBlock">
-        <span id="rangeLabel">比較位置</span>
-        <input id="compareRange" type="range" min="0" max="100" value="50" disabled>
-        <span id="rangeValue">50%</span>
+      <div id="modeInfo">
+        <span id="modeLabel">比較位置</span>
+        <span id="modeValue">50%</span>
       </div>
-      <button id="resetBtn" disabled>↺</button>
     </div>
-  </div>
+
+    <div id="sliderDock">
+      <input id="compareRange" type="range" min="0" max="100" value="50" disabled aria-label="比較位置">
+    </div>
+  </footer>
 
   <div id="historyModal" aria-hidden="true">
     <div id="historySheet">
@@ -261,15 +343,16 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border:0;border-radiu
 
 <script>
 const $=id=>document.getElementById(id);
+
 const stage=$('stage');
 const canvasA=$('canvasA'),canvasB=$('canvasB');
 const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d');
 const clipLayer=$('clipLayer');
-const divider=$('divider'),dividerHit=$('dividerHit');
+const dividerLine=$('dividerLine');
 const filesInput=$('files');
-const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),historyBtn=$('historyBtn'),fullBtn=$('fullBtn');
-const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn'),resetBtn=$('resetBtn');
-const compareRange=$('compareRange'),rangeLabel=$('rangeLabel'),rangeValue=$('rangeValue');
+const swapBtn=$('swapBtn'),alignBtn=$('alignBtn'),historyBtn=$('historyBtn'),resetBtn=$('resetBtn');
+const splitBtn=$('splitBtn'),fadeBtn=$('fadeBtn');
+const compareRange=$('compareRange'),modeLabel=$('modeLabel'),modeValue=$('modeValue');
 const statusEl=$('status'),hint=$('hint');
 const historyModal=$('historyModal'),historyList=$('historyList'),historyCount=$('historyCount');
 const closeHistoryBtn=$('closeHistoryBtn'),clearHistoryBtn=$('clearHistoryBtn');
@@ -277,129 +360,182 @@ const closeHistoryBtn=$('closeHistoryBtn'),clearHistoryBtn=$('clearHistoryBtn');
 let imgA=null,imgB=null;
 let blobA=null,blobB=null;
 let metaA=null,metaB=null;
+let alignedCanvas=null;
+
 let mode='split';
-let dividerPct=50;
+let splitPct=50;
 let fadePct=50;
-let alignment={scale:1,angle:0,dx:0,dy:0,score:0};
+let zoom=1;
 let aligning=false;
 let openingHistory=false;
 
+/* ---------- 基本描画 ---------- */
 function status(t){statusEl.textContent=t}
+
 function controlsReady(){
   const ok=!!(imgA&&imgB);
   [swapBtn,alignBtn,splitBtn,fadeBtn,compareRange,resetBtn].forEach(x=>x.disabled=!ok);
   hint.classList.toggle('hidden',!!(imgA||imgB));
 }
+
 function resizeCanvas(c){
-  const dpr=Math.min(3,Math.max(1,devicePixelRatio||1));
+  const dpr=Math.min(3,Math.max(1,window.devicePixelRatio||1));
   const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);
-  c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
-  c.style.width=w+'px';c.style.height=h+'px';
+  c.width=Math.round(w*dpr);
+  c.height=Math.round(h*dpr);
+  c.style.width=w+'px';
+  c.style.height=h+'px';
   return dpr;
 }
+
 function containRect(iw,ih,W,H){
   const s=Math.min(W/iw,H/ih);
   return {x:(W-iw*s)/2,y:(H-ih*s)/2,w:iw*s,h:ih*s};
 }
+
 function draw(){
   const da=resizeCanvas(canvasA),db=resizeCanvas(canvasB);
-  ctxA.setTransform(1,0,0,1,0,0);ctxB.setTransform(1,0,0,1,0,0);
+
+  ctxA.setTransform(1,0,0,1,0,0);
+  ctxB.setTransform(1,0,0,1,0,0);
   ctxA.clearRect(0,0,canvasA.width,canvasA.height);
   ctxB.clearRect(0,0,canvasB.width,canvasB.height);
-  ctxA.setTransform(da,0,0,da,0,0);ctxB.setTransform(db,0,0,db,0,0);
+
+  ctxA.setTransform(da,0,0,da,0,0);
+  ctxB.setTransform(db,0,0,db,0,0);
 
   const W=stage.clientWidth,H=stage.clientHeight;
 
   if(imgA){
-    const a=containRect(imgA.naturalWidth,imgA.naturalHeight,W,H);
-    ctxA.drawImage(imgA,a.x,a.y,a.w,a.h);
+    const base=containRect(imgA.naturalWidth,imgA.naturalHeight,W,H);
+    const r={
+      w:base.w*zoom,
+      h:base.h*zoom,
+      x:W/2-(base.w*zoom)/2,
+      y:H/2-(base.h*zoom)/2
+    };
+    ctxA.drawImage(imgA,r.x,r.y,r.w,r.h);
 
     if(imgB){
-      /* BはAの表示枠を基準に固定。画像自体を指で動かす機能はない */
-      const b=containRect(imgB.naturalWidth,imgB.naturalHeight,a.w,a.h);
-      const bx=a.x+b.x,by=a.y+b.y;
-      const cx=a.x+a.w/2,cy=a.y+a.h/2;
-
-      ctxB.save();
-      ctxB.translate(cx+alignment.dx*a.w,cy+alignment.dy*a.h);
-      ctxB.rotate(alignment.angle*Math.PI/180);
-      ctxB.scale(alignment.scale,alignment.scale);
-      ctxB.translate(-cx,-cy);
-      ctxB.drawImage(imgB,bx,by,b.w,b.h);
-      ctxB.restore();
+      if(alignedCanvas){
+        ctxB.drawImage(alignedCanvas,r.x,r.y,r.w,r.h);
+      }else{
+        const bb=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
+        const rb={
+          w:bb.w*zoom,
+          h:bb.h*zoom,
+          x:W/2-(bb.w*zoom)/2,
+          y:H/2-(bb.h*zoom)/2
+        };
+        ctxB.drawImage(imgB,rb.x,rb.y,rb.w,rb.h);
+      }
     }
   }else if(imgB){
-    const b=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
-    ctxB.drawImage(imgB,b.x,b.y,b.w,b.h);
+    const base=containRect(imgB.naturalWidth,imgB.naturalHeight,W,H);
+    const r={
+      w:base.w*zoom,
+      h:base.h*zoom,
+      x:W/2-(base.w*zoom)/2,
+      y:H/2-(base.h*zoom)/2
+    };
+    ctxB.drawImage(imgB,r.x,r.y,r.w,r.h);
   }
+
   applyMode();
 }
+
 function applyMode(){
   if(mode==='split'){
     clipLayer.style.opacity='1';
-    clipLayer.style.clipPath=`inset(0 ${100-dividerPct}% 0 0)`;
-    divider.style.left=dividerPct+'%';
-    divider.classList.toggle('hidden',!(imgA&&imgB));
-    rangeLabel.textContent='比較位置';
-    compareRange.value=Math.round(dividerPct);
-    rangeValue.textContent=Math.round(dividerPct)+'%';
+    clipLayer.style.clipPath=`inset(0 ${100-splitPct}% 0 0)`;
+    dividerLine.style.left=splitPct+'%';
+    dividerLine.classList.toggle('hidden',!(imgA&&imgB));
+
+    compareRange.value=Math.round(splitPct);
+    modeLabel.textContent='比較位置';
+    modeValue.textContent=Math.round(splitPct)+'%';
+    compareRange.setAttribute('aria-label','比較位置');
   }else{
     clipLayer.style.clipPath='none';
     clipLayer.style.opacity=String(fadePct/100);
-    divider.classList.add('hidden');
-    rangeLabel.textContent='透明度';
+    dividerLine.classList.add('hidden');
+
     compareRange.value=Math.round(fadePct);
-    rangeValue.textContent=Math.round(fadePct)+'%';
+    modeLabel.textContent='透明度';
+    modeValue.textContent=Math.round(fadePct)+'%';
+    compareRange.setAttribute('aria-label','透明度');
   }
 }
+
 function setMode(m){
   mode=m;
   splitBtn.classList.toggle('active',m==='split');
   fadeBtn.classList.toggle('active',m==='fade');
   applyMode();
 }
+
 splitBtn.onclick=()=>setMode('split');
 fadeBtn.onclick=()=>setMode('fade');
 
 compareRange.addEventListener('input',()=>{
   const v=Number(compareRange.value);
-  if(mode==='split')dividerPct=v;
+  if(mode==='split')splitPct=v;
   else fadePct=v;
   applyMode();
 });
 
-/* バー操作：バー自体は太い70pxの当たり判定。画像は一切動かない */
-let draggingDivider=false;
-function setDividerFromX(clientX){
-  const r=stage.getBoundingClientRect();
-  dividerPct=Math.max(0,Math.min(100,(clientX-r.left)/r.width*100));
-  applyMode();
+
+/* ---------- ピンチズーム（2枚を同時に同倍率で拡大縮小） ---------- */
+let zoomPointers=new Map();
+let pinchStartDistance=0;
+let pinchStartZoom=1;
+
+function pointerDistance(){
+  const p=[...zoomPointers.values()];
+  if(p.length<2)return 0;
+  return Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
 }
-dividerHit.addEventListener('pointerdown',e=>{
-  draggingDivider=true;
-  dividerHit.setPointerCapture(e.pointerId);
-  setDividerFromX(e.clientX);
-  e.preventDefault();
-});
-dividerHit.addEventListener('pointermove',e=>{
-  if(!draggingDivider)return;
-  setDividerFromX(e.clientX);
-  e.preventDefault();
-});
-dividerHit.addEventListener('pointerup',e=>{
-  draggingDivider=false;
-  try{dividerHit.releasePointerCapture(e.pointerId)}catch(_){}
-});
-dividerHit.addEventListener('pointercancel',()=>draggingDivider=false);
 
-/* バーモードでは画像上をタップした位置へバーを移動 */
 stage.addEventListener('pointerdown',e=>{
-  if(mode!=='split'||!imgA||!imgB)return;
-  if(e.target===dividerHit||dividerHit.contains(e.target))return;
-  setDividerFromX(e.clientX);
+  if(!imgA)return;
+  zoomPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(zoomPointers.size===2){
+    pinchStartDistance=pointerDistance();
+    pinchStartZoom=zoom;
+  }
 });
 
-/* 画像読込 */
+stage.addEventListener('pointermove',e=>{
+  if(!zoomPointers.has(e.pointerId))return;
+  zoomPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  if(zoomPointers.size===2 && pinchStartDistance>0){
+    const d=pointerDistance();
+    zoom=Math.max(0.65,Math.min(6,pinchStartZoom*(d/pinchStartDistance)));
+    draw();
+    e.preventDefault();
+  }
+},{passive:false});
+
+function endZoomPointer(e){
+  zoomPointers.delete(e.pointerId);
+  if(zoomPointers.size<2){
+    pinchStartDistance=0;
+    pinchStartZoom=zoom;
+  }
+}
+stage.addEventListener('pointerup',endZoomPointer);
+stage.addEventListener('pointercancel',endZoomPointer);
+stage.addEventListener('pointerleave',endZoomPointer);
+
+/* ダブルタップ/ダブルクリックで倍率だけ1倍へ */
+stage.addEventListener('dblclick',()=>{
+  zoom=1;
+  draw();
+  status('ズームを1倍に戻しました');
+});
+
+/* ---------- 画像読み込み ---------- */
 function fileToImage(blob){
   return new Promise((resolve,reject)=>{
     const url=URL.createObjectURL(blob);
@@ -409,37 +545,84 @@ function fileToImage(blob){
     im.src=url;
   });
 }
+
 function fmeta(f){
-  return {name:f?.name||'画像',size:Number(f?.size||0),lastModified:Number(f?.lastModified||0),type:f?.type||'image/*'};
+  return {
+    name:f?.name||'画像',
+    size:Number(f?.size||0),
+    lastModified:Number(f?.lastModified||0),
+    type:f?.type||'image/*'
+  };
 }
+
 async function loadPair(aBlob,bBlob,aMeta,bMeta,{save=true}={}){
   status('画像を読み込み中…');
+
   const [a,b]=await Promise.all([fileToImage(aBlob),fileToImage(bBlob)]);
-  imgA=a;imgB=b;blobA=aBlob;blobB=bBlob;metaA=aMeta;metaB=bMeta;
-  alignment={scale:1,angle:0,dx:0,dy:0,score:0};
-  dividerPct=50;fadePct=50;setMode('split');
-  controlsReady();draw();
-  if(save&&!openingHistory)saveCurrentPair().catch(()=>{});
+  imgA=a;imgB=b;
+  blobA=aBlob;blobB=bBlob;
+  metaA=aMeta;metaB=bMeta;
+
+  alignedCanvas=null;
+  zoom=1;
+  splitPct=50;fadePct=50;
+  setMode('split');
+  controlsReady();
+  draw();
+
+  if(save&&!openingHistory){
+    saveCurrentPair().catch(()=>{});
+  }
+
   await autoAlign(true);
 }
+
 filesInput.addEventListener('change',async e=>{
-  const fs=[...e.target.files];
-  if(!fs.length)return;
+  const f=e.target.files?.[0];
+  if(!f)return;
+
   try{
-    if(fs.length>=2){
-      await loadPair(fs[0],fs[1],fmeta(fs[0]),fmeta(fs[1]),{save:true});
-    }else if(!imgA){
-      imgA=await fileToImage(fs[0]);blobA=fs[0];metaA=fmeta(fs[0]);
-      controlsReady();draw();status('もう1枚選択してください');
-    }else{
-      imgB=await fileToImage(fs[0]);blobB=fs[0];metaB=fmeta(fs[0]);
-      controlsReady();draw();
+    if(!imgA){
+      imgA=await fileToImage(f);
+      blobA=f;
+      metaA=fmeta(f);
+      alignedCanvas=null;
+      zoom=1;
+      controlsReady();
+      draw();
+      status('1枚目を選択しました。もう一度「画像」で2枚目を選択');
+    }else if(!imgB){
+      imgB=await fileToImage(f);
+      blobB=f;
+      metaB=fmeta(f);
+      alignedCanvas=null;
+      zoom=1;
+      controlsReady();
+      draw();
       if(!openingHistory)saveCurrentPair().catch(()=>{});
       await autoAlign(true);
+    }else{
+      // すでに2枚ある場合は、新しい1枚を画像1として開始し直す。
+      imgA=await fileToImage(f);
+      blobA=f;
+      metaA=fmeta(f);
+      imgB=null;
+      blobB=null;
+      metaB=null;
+      alignedCanvas=null;
+      zoom=1;
+      splitPct=50;
+      fadePct=50;
+      setMode('split');
+      controlsReady();
+      draw();
+      status('新しい1枚目を選択しました。もう一度「画像」で2枚目を選択');
     }
   }catch(err){
-    console.error(err);status('画像を読み込めませんでした');
+    console.error(err);
+    status('画像を読み込めませんでした');
   }
+
   filesInput.value='';
 });
 
@@ -447,170 +630,206 @@ swapBtn.onclick=async()=>{
   [imgA,imgB]=[imgB,imgA];
   [blobA,blobB]=[blobB,blobA];
   [metaA,metaB]=[metaB,metaA];
-  alignment={scale:1,angle:0,dx:0,dy:0,score:0};
+  alignedCanvas=null;
+  zoom=1;
   draw();
   await autoAlign(true);
 };
+
 resetBtn.onclick=()=>{
-  alignment={scale:1,angle:0,dx:0,dy:0,score:0};
-  dividerPct=50;fadePct=50;setMode('split');draw();status('表示をリセットしました');
-};
-alignBtn.onclick=()=>autoAlign(false);
-
-fullBtn.onclick=async()=>{
-  try{
-    if(document.fullscreenEnabled){
-      if(!document.fullscreenElement)await document.documentElement.requestFullscreen();
-      else await document.exitFullscreen();
-    }
-  }catch(_){}
+  zoom=1;
+  splitPct=50;
+  fadePct=50;
+  setMode('split');
+  draw();
+  status('表示をリセットしました');
 };
 
-/* ===== 外部ライブラリ不要の自動位置合わせ =====
-   回転・拡大率・XY位置を画像のエッジ相関で自動推定する。
-   CDN読込待ちがないため、画像選択直後から必ず実行できる。 */
-function buildEdgeMap(img,w,h){
-  const c=document.createElement('canvas');
-  c.width=w;c.height=h;
-  const x=c.getContext('2d',{willReadFrequently:true});
-  x.fillStyle='#000';x.fillRect(0,0,w,h);
+/* ---------- OpenCVを確実に読み込み ---------- */
+let cvPromise=null;
 
-  const r=containRect(img.naturalWidth,img.naturalHeight,w,h);
-  x.drawImage(img,r.x,r.y,r.w,r.h);
+function ensureOpenCV(){
+  if(cvPromise)return cvPromise;
 
-  const d=x.getImageData(0,0,w,h).data;
-  const gray=new Float32Array(w*h);
-  for(let i=0,p=0;i<d.length;i+=4,p++){
-    gray[p]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;
-  }
-  const edge=new Float32Array(w*h);
-  let max=1e-6;
-  for(let y=1;y<h-1;y++){
-    for(let xx=1;xx<w-1;xx++){
-      const i=y*w+xx;
-      const gx=
-        -gray[i-w-1]-2*gray[i-1]-gray[i+w-1]+
-         gray[i-w+1]+2*gray[i+1]+gray[i+w+1];
-      const gy=
-        -gray[i-w-1]-2*gray[i-w]-gray[i-w+1]+
-         gray[i+w-1]+2*gray[i+w]+gray[i+w+1];
-      const m=Math.sqrt(gx*gx+gy*gy);
-      edge[i]=m;if(m>max)max=m;
-    }
-  }
-  for(let i=0;i<edge.length;i++)edge[i]/=max;
-  return edge;
-}
-function makeSamplePoints(a,w,h){
-  const cand=[];
-  for(let y=2;y<h-2;y+=2){
-    for(let x=2;x<w-2;x+=2){
-      const v=a[y*w+x];
-      if(v>0.08)cand.push({x,y,v});
-    }
-  }
-  cand.sort((p,q)=>q.v-p.v);
-  return cand.slice(0,1400);
-}
-function sampleNearest(arr,w,h,x,y){
-  const xi=Math.round(x),yi=Math.round(y);
-  if(xi<0||yi<0||xi>=w||yi>=h)return 0;
-  return arr[yi*w+xi];
-}
-function scoreTransform(points,b,w,h,t){
-  const cx=w/2,cy=h/2;
-  const rad=t.angle*Math.PI/180,co=Math.cos(rad),si=Math.sin(rad);
-  const sc=t.scale,tx=t.dx*w,ty=t.dy*h;
-  let ab=0,a2=0,b2=0,inside=0;
-  for(const p of points){
-    let ox=p.x-cx-tx,oy=p.y-cy-ty;
-    const sx=( co*ox+si*oy)/sc+cx;
-    const sy=(-si*ox+co*oy)/sc+cy;
-    if(sx<0||sy<0||sx>=w||sy>=h)continue;
-    const bv=sampleNearest(b,w,h,sx,sy);
-    const av=p.v;
-    ab+=av*bv;a2+=av*av;b2+=bv*bv;inside++;
-  }
-  if(inside<points.length*.55||a2<1e-8||b2<1e-8)return -1;
-  return ab/Math.sqrt(a2*b2);
-}
-function searchGrid(points,b,w,h,base,steps,span=1){
-  let best={...base,score:base.score??-1};
-  const vals=n=>[-span,0,span].map(k=>k*n);
-  for(const ds of vals(steps.scale)){
-    for(const da of vals(steps.angle)){
-      for(const dx of vals(steps.dx)){
-        for(const dy of vals(steps.dy)){
-          const t={
-            scale:Math.max(.80,Math.min(1.25,base.scale+ds)),
-            angle:Math.max(-10,Math.min(10,base.angle+da)),
-            dx:Math.max(-.18,Math.min(.18,base.dx+dx)),
-            dy:Math.max(-.18,Math.min(.18,base.dy+dy))
-          };
-          const s=scoreTransform(points,b,w,h,t);
-          if(s>best.score)best={...t,score:s};
+  cvPromise=new Promise((resolve,reject)=>{
+    const finish=()=>{
+      try{
+        if(window.cv && typeof window.cv.then==='function'){
+          window.cv.then(v=>resolve(v)).catch(reject);
+        }else if(window.cv && window.cv.Mat){
+          resolve(window.cv);
         }
-      }
+      }catch(e){reject(e)}
+    };
+
+    if(window.cv){
+      finish();
+      return;
     }
-  }
-  return best;
+
+    window.Module=window.Module||{};
+    window.Module.onRuntimeInitialized=finish;
+
+    const s=document.createElement('script');
+    s.src='https://docs.opencv.org/4.x/opencv.js';
+    s.async=true;
+    s.onload=()=>{
+      if(window.cv && window.cv.Mat)finish();
+    };
+    s.onerror=()=>reject(new Error('OpenCVの読み込みに失敗'));
+    document.head.appendChild(s);
+
+    setTimeout(()=>{
+      if(!window.cv)reject(new Error('OpenCV読み込みタイムアウト'));
+    },20000);
+  });
+
+  return cvPromise;
 }
+
+function imageToMat(cv,im){
+  const c=document.createElement('canvas');
+  c.width=im.naturalWidth;
+  c.height=im.naturalHeight;
+  c.getContext('2d').drawImage(im,0,0);
+  return cv.imread(c);
+}
+
+/* ---------- 高精度の自動合致 ---------- */
 async function autoAlign(silent=false){
   if(aligning||!imgA||!imgB)return;
-  aligning=true;alignBtn.disabled=true;
+
+  aligning=true;
+  alignBtn.disabled=true;
   status('自動で位置合わせ中…');
 
-  await new Promise(r=>setTimeout(r,30));
+  let cv;
+  let srcA,srcB,smallA,smallB,gA,gB,kpA,kpB,desA,desB,mask,orb,matcher,matches;
+  let srcPts,dstPts,H,warped,inlierMask;
+
   try{
-    const w=160;
-    const h=Math.max(90,Math.min(220,Math.round(w*imgA.naturalHeight/imgA.naturalWidth)));
-    const [a,b]=[buildEdgeMap(imgA,w,h),buildEdgeMap(imgB,w,h)];
-    const pts=makeSamplePoints(a,w,h);
-    if(pts.length<80)throw new Error('特徴不足');
+    cv=await ensureOpenCV();
 
-    let best={scale:1,angle:0,dx:0,dy:0,score:-1};
+    srcA=imageToMat(cv,imgA);
+    srcB=imageToMat(cv,imgB);
 
-    /* 粗探索 */
-    const scales=[.90,.95,1,1.05,1.10];
-    const angles=[-5,-2.5,0,2.5,5];
-    const shifts=[-.10,-.066,-.033,0,.033,.066,.10];
-    for(const sc of scales){
-      for(const an of angles){
-        for(const dx of shifts){
-          for(const dy of shifts){
-            const t={scale:sc,angle:an,dx,dy};
-            const s=scoreTransform(pts,b,w,h,t);
-            if(s>best.score)best={...t,score:s};
-          }
+    const maxSide=1200;
+    const sA=Math.min(1,maxSide/Math.max(srcA.cols,srcA.rows));
+    const sB=Math.min(1,maxSide/Math.max(srcB.cols,srcB.rows));
+
+    smallA=new cv.Mat();
+    smallB=new cv.Mat();
+    cv.resize(srcA,smallA,new cv.Size(0,0),sA,sA,cv.INTER_AREA);
+    cv.resize(srcB,smallB,new cv.Size(0,0),sB,sB,cv.INTER_AREA);
+
+    gA=new cv.Mat();
+    gB=new cv.Mat();
+    cv.cvtColor(smallA,gA,cv.COLOR_RGBA2GRAY);
+    cv.cvtColor(smallB,gB,cv.COLOR_RGBA2GRAY);
+
+    kpA=new cv.KeyPointVector();
+    kpB=new cv.KeyPointVector();
+    desA=new cv.Mat();
+    desB=new cv.Mat();
+    mask=new cv.Mat();
+
+    orb=new cv.ORB(5000);
+    orb.detectAndCompute(gA,mask,kpA,desA);
+    orb.detectAndCompute(gB,mask,kpB,desB);
+
+    if(desA.empty()||desB.empty()){
+      throw new Error('特徴点不足');
+    }
+
+    matcher=new cv.BFMatcher(cv.NORM_HAMMING,false);
+    matches=new cv.DMatchVectorVector();
+    matcher.knnMatch(desB,desA,matches,2);
+
+    const good=[];
+    for(let i=0;i<matches.size();i++){
+      const m=matches.get(i);
+      if(m.size()>=2){
+        const m0=m.get(0);
+        const m1=m.get(1);
+        if(m0.distance<0.78*m1.distance){
+          good.push(m0);
         }
       }
-      await new Promise(r=>setTimeout(r,0));
+      m.delete();
     }
 
-    /* 段階的に微調整 */
-    best=searchGrid(pts,b,w,h,best,{scale:.025,angle:1.25,dx:.018,dy:.018});
-    best=searchGrid(pts,b,w,h,best,{scale:.012,angle:.6,dx:.009,dy:.009});
-    best=searchGrid(pts,b,w,h,best,{scale:.006,angle:.3,dx:.0045,dy:.0045});
+    if(good.length<10){
+      throw new Error('一致点不足');
+    }
 
-    alignment=best;
+    const sp=[],dp=[];
+    for(const m of good){
+      const pB=kpB.get(m.queryIdx).pt;
+      const pA=kpA.get(m.trainIdx).pt;
+
+      sp.push(pB.x/sB,pB.y/sB);
+      dp.push(pA.x/sA,pA.y/sA);
+    }
+
+    srcPts=cv.matFromArray(good.length,1,cv.CV_32FC2,sp);
+    dstPts=cv.matFromArray(good.length,1,cv.CV_32FC2,dp);
+    inlierMask=new cv.Mat();
+
+    H=cv.findHomography(srcPts,dstPts,cv.RANSAC,4,inlierMask);
+
+    if(H.empty()){
+      throw new Error('変換計算失敗');
+    }
+
+    let inliers=0;
+    for(let i=0;i<inlierMask.rows;i++){
+      if(inlierMask.ucharPtr(i,0)[0])inliers++;
+    }
+
+    if(inliers<8){
+      throw new Error('信頼できる一致点不足');
+    }
+
+    warped=new cv.Mat();
+    cv.warpPerspective(
+      srcB,
+      warped,
+      H,
+      new cv.Size(srcA.cols,srcA.rows),
+      cv.INTER_LINEAR,
+      cv.BORDER_CONSTANT,
+      new cv.Scalar(0,0,0,0)
+    );
+
+    const out=document.createElement('canvas');
+    out.width=warped.cols;
+    out.height=warped.rows;
+    cv.imshow(out,warped);
+
+    alignedCanvas=out;
     draw();
 
-    if(best.score>0.28){
-      status('自動合致しました');
-    }else{
-      status('自動合致しました（構図差が大きい場合は完全一致しません）');
-    }
+    status(`自動合致完了（一致点 ${inliers}）`);
   }catch(err){
     console.error(err);
-    alignment={scale:1,angle:0,dx:0,dy:0,score:0};
+    alignedCanvas=null;
     draw();
-    status('自動合致できませんでした');
+    status('自動合致できませんでした。元画像との差が大きい可能性があります');
   }finally{
-    aligning=false;controlsReady();
+    for(const x of [
+      srcA,srcB,smallA,smallB,gA,gB,kpA,kpB,desA,desB,mask,
+      orb,matcher,matches,srcPts,dstPts,H,warped,inlierMask
+    ]){
+      try{if(x&&x.delete)x.delete()}catch(_){}
+    }
+    aligning=false;
+    controlsReady();
   }
 }
 
-/* ===== 比較履歴：端末内に最大20組 ===== */
+alignBtn.onclick=()=>autoAlign(false);
+
+/* ---------- 比較履歴：端末内に最大20組 ---------- */
 const DB_NAME='image-compare-history-v2';
 const STORE='pairs';
 const MAX_HISTORY=20;
@@ -618,68 +837,97 @@ let dbPromise=null;
 
 function openDb(){
   if(dbPromise)return dbPromise;
+
   dbPromise=new Promise((resolve,reject)=>{
     const q=indexedDB.open(DB_NAME,1);
+
     q.onupgradeneeded=()=>{
       const db=q.result;
       const st=db.createObjectStore(STORE,{keyPath:'id'});
       st.createIndex('createdAt','createdAt');
       st.createIndex('pairKey','pairKey');
     };
+
     q.onsuccess=()=>resolve(q.result);
     q.onerror=()=>reject(q.error);
   });
+
   return dbPromise;
 }
-function reqp(q){return new Promise((res,rej)=>{q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+
+function reqp(q){
+  return new Promise((res,rej)=>{
+    q.onsuccess=()=>res(q.result);
+    q.onerror=()=>rej(q.error);
+  });
+}
+
 function pairKey(){
   const a=metaA||{},b=metaB||{};
   return [a.name,a.size,a.lastModified,b.name,b.size,b.lastModified].join('|');
 }
+
 async function thumb(blob,max=160){
   const im=await fileToImage(blob);
   const s=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight));
+
   const c=document.createElement('canvas');
   c.width=Math.max(1,Math.round(im.naturalWidth*s));
   c.height=Math.max(1,Math.round(im.naturalHeight*s));
   c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+
   return await new Promise(r=>c.toBlob(r,'image/jpeg',.72));
 }
+
 async function allHistory(){
   const db=await openDb();
   const tx=db.transaction(STORE,'readonly');
   const list=await reqp(tx.objectStore(STORE).getAll());
   return list.sort((a,b)=>b.createdAt-a.createdAt);
 }
+
 async function saveCurrentPair(){
   if(!blobA||!blobB)return;
+
   const db=await openDb();
   const list=await allHistory();
   const key=pairKey();
   const same=list.find(x=>x.pairKey===key);
+
   if(same){
     same.createdAt=Date.now();
     const tx=db.transaction(STORE,'readwrite');
     await reqp(tx.objectStore(STORE).put(same));
   }else{
     let ta=null,tb=null;
-    try{[ta,tb]=await Promise.all([thumb(blobA),thumb(blobB)])}catch(_){}
+    try{
+      [ta,tb]=await Promise.all([thumb(blobA),thumb(blobB)]);
+    }catch(_){}
+
     const item={
       id:'p-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
-      pairKey:key,createdAt:Date.now(),
-      blobA,blobB,metaA,metaB,thumbA:ta,thumbB:tb
+      pairKey:key,
+      createdAt:Date.now(),
+      blobA,blobB,metaA,metaB,
+      thumbA:ta,thumbB:tb
     };
+
     const tx=db.transaction(STORE,'readwrite');
     await reqp(tx.objectStore(STORE).put(item));
   }
+
   const now=await allHistory();
+
   if(now.length>MAX_HISTORY){
-    const tx=db.transaction(STORE,'readwrite'),st=tx.objectStore(STORE);
+    const tx=db.transaction(STORE,'readwrite');
+    const st=tx.objectStore(STORE);
     now.slice(MAX_HISTORY).forEach(x=>st.delete(x.id));
   }
+
   try{navigator.storage?.persist?.()}catch(_){}
   refreshHistoryCount();
 }
+
 async function refreshHistoryCount(){
   try{
     const n=(await allHistory()).length;
@@ -687,89 +935,156 @@ async function refreshHistoryCount(){
     historyCount.classList.toggle('show',n>0);
   }catch(_){}
 }
+
 function fmtDate(ts){
-  return new Intl.DateTimeFormat('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(ts));
+  return new Intl.DateTimeFormat(
+    'ja-JP',
+    {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}
+  ).format(new Date(ts));
 }
-function objUrl(b){return b?URL.createObjectURL(b):''}
+
+function objUrl(b){
+  return b?URL.createObjectURL(b):'';
+}
+
 async function renderHistory(){
   const list=await allHistory();
   historyList.innerHTML='';
+
   if(!list.length){
     historyList.innerHTML='<div class="historyEmpty">まだ履歴はありません<br>2枚を読み込むと自動保存されます</div>';
     return;
   }
+
   for(const it of list){
-    const row=document.createElement('div');row.className='historyItem';
-    const thumbs=document.createElement('div');thumbs.className='historyThumbs';
+    const row=document.createElement('div');
+    row.className='historyItem';
+
+    const thumbs=document.createElement('div');
+    thumbs.className='historyThumbs';
+
     for(const bb of [it.thumbA||it.blobA,it.thumbB||it.blobB]){
-      const im=document.createElement('img'),u=objUrl(bb);im.src=u;im.onload=()=>URL.revokeObjectURL(u);thumbs.append(im);
+      const im=document.createElement('img');
+      const u=objUrl(bb);
+      im.src=u;
+      im.onload=()=>URL.revokeObjectURL(u);
+      thumbs.append(im);
     }
-    const meta=document.createElement('div');meta.className='historyMeta';
+
+    const meta=document.createElement('div');
+    meta.className='historyMeta';
     meta.innerHTML='<div class="date">'+fmtDate(it.createdAt)+'</div><div class="names"></div>';
-    meta.querySelector('.names').textContent=(it.metaA?.name||'画像1')+' × '+(it.metaB?.name||'画像2');
-    const actions=document.createElement('div');actions.className='historyActions';
-    const op=document.createElement('button');op.textContent='開く';
+    meta.querySelector('.names').textContent=
+      (it.metaA?.name||'画像1')+' × '+(it.metaB?.name||'画像2');
+
+    const actions=document.createElement('div');
+    actions.className='historyActions';
+
+    const op=document.createElement('button');
+    op.textContent='開く';
     op.onclick=async()=>{
-      closeHistory();openingHistory=true;
-      try{await loadPair(it.blobA,it.blobB,it.metaA,it.metaB,{save:false})}
-      finally{openingHistory=false}
+      closeHistory();
+      openingHistory=true;
+      try{
+        await loadPair(it.blobA,it.blobB,it.metaA,it.metaB,{save:false});
+      }finally{
+        openingHistory=false;
+      }
     };
-    const del=document.createElement('button');del.textContent='削除';del.className='danger';
+
+    const del=document.createElement('button');
+    del.textContent='削除';
+    del.className='danger';
     del.onclick=async()=>{
-      const db=await openDb(),tx=db.transaction(STORE,'readwrite');
+      const db=await openDb();
+      const tx=db.transaction(STORE,'readwrite');
       await reqp(tx.objectStore(STORE).delete(it.id));
-      await renderHistory();refreshHistoryCount();
+      await renderHistory();
+      refreshHistoryCount();
     };
-    actions.append(op,del);row.append(thumbs,meta,actions);historyList.append(row);
+
+    actions.append(op,del);
+    row.append(thumbs,meta,actions);
+    historyList.append(row);
   }
 }
+
 async function openHistory(){
   await renderHistory();
   historyModal.classList.add('open');
   historyModal.setAttribute('aria-hidden','false');
 }
+
 function closeHistory(){
   historyModal.classList.remove('open');
   historyModal.setAttribute('aria-hidden','true');
 }
+
 historyBtn.onclick=openHistory;
 closeHistoryBtn.onclick=closeHistory;
-historyModal.addEventListener('click',e=>{if(e.target===historyModal)closeHistory()});
+historyModal.addEventListener('click',e=>{
+  if(e.target===historyModal)closeHistory();
+});
+
 clearHistoryBtn.onclick=async()=>{
   if(!confirm('比較履歴をすべて削除しますか？'))return;
-  const db=await openDb(),tx=db.transaction(STORE,'readwrite');
+
+  const db=await openDb();
+  const tx=db.transaction(STORE,'readwrite');
   await reqp(tx.objectStore(STORE).clear());
-  await renderHistory();refreshHistoryCount();
+
+  await renderHistory();
+  refreshHistoryCount();
 };
+
 refreshHistoryCount();
 
-/* ===== GitHub Pages の最新版を自動反映 ===== */
+/* ---------- GitHub Pagesの最新版を自動反映 ---------- */
 const APP_VERSION=document.querySelector('meta[name="app-version"]')?.content||'0';
 let checking=false;
+
 async function checkForUpdate(){
   if(checking||!/^https?:$/.test(location.protocol))return;
+
   checking=true;
+
   try{
     const clean=location.origin+location.pathname;
-    const r=await fetch(clean+'?__update_check='+Date.now(),{cache:'no-store'});
+    const r=await fetch(clean+'?__update_check='+Date.now(),{
+      cache:'no-store',
+      headers:{'Cache-Control':'no-cache'}
+    });
+
     if(!r.ok)return;
+
     const t=await r.text();
     const m=t.match(/<meta\s+name=["']app-version["']\s+content=["']([^"']+)["']/i);
     const remote=m?.[1];
+
     if(remote&&remote!==APP_VERSION){
       status('最新版を反映します…');
-      const u=new URL(clean);u.searchParams.set('__updated',Date.now());
+      const u=new URL(clean);
+      u.searchParams.set('__updated',Date.now().toString());
       location.replace(u.toString());
     }
-  }catch(_){}
-  finally{checking=false}
+  }catch(_){
+  }finally{
+    checking=false;
+  }
 }
-window.addEventListener('pageshow',()=>setTimeout(checkForUpdate,600));
-window.addEventListener('focus',()=>setTimeout(checkForUpdate,600));
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(checkForUpdate,600)});
+
+window.addEventListener('pageshow',()=>setTimeout(checkForUpdate,500));
+window.addEventListener('focus',()=>setTimeout(checkForUpdate,500));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    setTimeout(checkForUpdate,500);
+  }
+});
+
 setTimeout(checkForUpdate,1200);
 
 window.addEventListener('resize',()=>setTimeout(draw,60));
+window.visualViewport?.addEventListener('resize',()=>setTimeout(draw,60));
 </script>
 </body>
 </html>
